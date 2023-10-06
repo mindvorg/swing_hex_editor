@@ -102,12 +102,14 @@ public class Controller extends JFrame {
         }
     };
 
-    private void openFile(String fileName) throws IOException {
+    private void openFile(String fileName) throws IOException {//надо вынести в отдельный файл по работе с файлами
         FileReader fr;
         try {
+            TextListener text=new TextListener(textArea_normal,textArea_hex);
             setTitle(fileName);
             fr = new FileReader(fileName);
             textArea_normal.read(fr, null);
+            //text.sync();
             textArea_hex.setText(textArea_normal.getText());
             fr.close();
         } catch (Exception e) {

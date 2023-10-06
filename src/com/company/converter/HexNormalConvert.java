@@ -5,20 +5,10 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
 
 public class HexNormalConvert extends DocumentFilter {
-    private int key;
-
-    public HexNormalConvert(int key) {
-        this.key = key;
-    }
-
-    public void setKey(int key) {
-        this.key = key;
-    }
-
 
     public void insertString(FilterBypass fb, int offset, String text, AttributeSet attr) throws BadLocationException {
         System.out.println("Insert");
-        text = encipher(text, key);
+        text = encipher(text);
         super.insertString(fb, offset, text, attr);
     }
 
@@ -33,11 +23,11 @@ public class HexNormalConvert extends DocumentFilter {
     @Override
     public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
 
-        text = encipher(text, key);
+        text = encipher(text);
         super.replace(fb, offset, length, text, attrs);
     }
 
-    public static String encipher(String istring, int key) {
+    public static String encipher(String istring) {
         StringBuilder encrypted = new StringBuilder();
         for (int i = 0; i < istring.length(); i++) {
 
