@@ -22,6 +22,10 @@ public class TextListener {
         textArea_normal.getDocument().addDocumentListener(new DocumentListener() {//выносить отдельно в два листенера, поскольку у нас конвертация в hex формат
             @Override
             public void insertUpdate(DocumentEvent e) {
+                textArea_normal.setRows(Math.max( textArea_normal.getRows(), textArea_hex.getRows()));
+                textArea_hex.setRows(Math.max( textArea_normal.getRows(), textArea_hex.getRows()));
+                System.out.println("norm_rows"+ textArea_normal.getRows());
+                System.out.println("hex_rows"+ textArea_normal.getText());
                 System.out.println(0);
                 if (!isUpdating) {
                     isUpdating = true;
@@ -39,9 +43,13 @@ public class TextListener {
 //                        } catch (BadLocationException ex) {
 //                            ex.printStackTrace();
 //                        }
-                        encrypted.append(Integer.toHexString(c));
+
+
+                      //                      encrypted.append(i%4==0?"\n":""+ (Integer.toHexString(c).length()==2?Integer.toHexString(c):"0"+Integer.toHexString(c)));
+                      encrypted.append(Integer.toHexString(c).length()==2?Integer.toHexString(c):"0"+Integer.toHexString(c));
                     }
-                    textArea_hex.setText(String.valueOf(encrypted));
+                    textArea_hex.setText(String.valueOf(encrypted));//можно вставлять текст, это ускорит, но надо понимать куда вставлять(позиция обычная*2) но надо узнать позицию
+                    //textArea_hex.insert(String.valueOf(encrypted),e.getOffset()*2);
                     isUpdating = false;
                 }
 
@@ -82,7 +90,8 @@ public class TextListener {
         textArea_hex.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
-
+                textArea_normal.setRows(Math.max( textArea_normal.getRows(), textArea_hex.getRows()));
+                textArea_hex.setRows(Math.max( textArea_normal.getRows(), textArea_hex.getRows()));
                 if (!isUpdating&& textArea_hex.getDocument().getLength()%2==0) {
                     isUpdating = true;
                     StringBuilder sb = new StringBuilder();
