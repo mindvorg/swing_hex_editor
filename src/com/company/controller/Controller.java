@@ -1,19 +1,16 @@
 package com.company.controller;
 
+import com.company.converter.HexFilter;
 import com.company.listeners.MouseMarkListener;
 import com.company.listeners.TextListener;
 
 import javax.swing.*;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.DefaultHighlighter;
-import javax.swing.text.Highlighter;
-import javax.swing.text.PlainDocument;
+import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.CharBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -61,52 +58,19 @@ public class Controller extends JFrame {
         panel.add(textArea_hex);
         panel.add(textArea_normal);
 
-//        sync();
 
-        //       TextListener text=new TextListener(textArea_normal,textArea_hex);
-        text.sync();
+        //text.sync();
+        text.syncNorm();
+        text.syncHex();
 
         MouseMarkListener marks = new MouseMarkListener(textArea_normal, textArea_hex);
         marks.sync();
 
-/*
-        textArea_normal.addMouseMotionListener(new MouseAdapter() {
-            @Override
-            public void mouseDragged(MouseEvent e) {
-                int start = textArea_normal.getSelectionStart();
-                int end = textArea_normal.getSelectionEnd();
-                String selectedText = textArea_normal.getText().substring(start, end);
-                try {
-                    String text = String.valueOf(textArea_normal.modelToView2D(start));
-                } catch (BadLocationException ex) {
-                    ex.printStackTrace();
-                }
 
-                if (!selectedText.isEmpty()) {
-                    //    textArea_normal.replaceRange(selectedText, start, end);
-//                    String selectedHEXText = textArea_hex.getText().substring(start*2,end*2);
-//                    textArea_hex.setSelectionStart(start*2);
-//                    textArea_hex.setSelectionEnd(end*2);
-//                    textArea_hex.select(start*2,end*2);
-                    try {
-                        Object o = hl.addHighlight(start*2, end*2, DefaultHighlighter.DefaultPainter);
-                    } catch (BadLocationException ex) {
-                        ex.printStackTrace();
-                    }
-                    textArea_normal.setSelectedTextColor(Color.RED);
-                    textArea_hex.setSelectedTextColor(Color.YELLOW);
-                } else {
-                    textArea_normal.setForeground(null);
-                    hl.removeAllHighlights();
-                }
-            }
-            @Override
-            public  void mouseClicked(MouseEvent e){
-                hl.removeAllHighlights();
-            }
-        });
-*/
-
+        //filter to HexText
+        //AbstractDocument doc= (AbstractDocument) textArea_hex.getDocument();
+        PlainDocument doc = (PlainDocument) textArea_hex.getDocument();
+        doc.setDocumentFilter(new HexFilter());
 
         //граница опасной зоны!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         add(scroll);
@@ -121,11 +85,7 @@ public class Controller extends JFrame {
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
 
-//    private void sync() {
-//
-//        textArea_normal.getDocument().addDocumentListener(new NormalTextListener(textArea_hex, textArea_normal));
-//        textArea_hex.getDocument().addDocumentListener(new NormalTextListener(textArea_normal, textArea_hex));
-//    }
+
 
 
     private void updateScrollBar() {
@@ -149,7 +109,7 @@ public class Controller extends JFrame {
 
         }
     };
-    Action save=new AbstractAction("Slave") {
+    Action save=new AbstractAction("Save") {
         @Override
         public void actionPerformed(ActionEvent e) {
             saveFile();
@@ -159,7 +119,6 @@ public class Controller extends JFrame {
     private void openFile(String fileName) throws IOException {//надо вынести в отдельный файл по работе с файлами
         FileReader fr;
         try {
-            setTitle(fileName);
             fr = new FileReader(fileName);
             //textArea_normal.read(fr, null);
             String output = new String(Files.readAllBytes(Path.of(fileName)));
