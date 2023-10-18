@@ -50,6 +50,7 @@ public class MouseMarkListener {
                     try {
               //          System.out.println(textArea_normal.getSelectedText());
                         startMark = startMark == endMark ? startMark - textArea_normal.getSelectedText().length() : startMark;
+
                         Object o = textArea_hex.getHighlighter().addHighlight(startMark * 2, endMark * 2, DefaultHighlighter.DefaultPainter);
                         //textArea_hex.setSelectedTextColor(Color.YELLOW);
 
@@ -65,8 +66,6 @@ public class MouseMarkListener {
             public void mouseExited(MouseEvent e) {
             }
         });
-
-
 
 
         textArea_hex.addMouseListener(new MouseListener() {
@@ -94,9 +93,12 @@ public class MouseMarkListener {
                  //   System.out.println("endHex" + startMark);
                     try {
                   //      System.out.println(textArea_hex.getSelectedText());
-                        startMark = startMark == endMark ? startMark - textArea_hex.getSelectedText().length() : startMark;
-                        Object o = textArea_normal.getHighlighter().addHighlight(startMark /2, endMark / 2, DefaultHighlighter.DefaultPainter);
 
+                        startMark = startMark == endMark ? startMark - textArea_hex.getSelectedText().length() : startMark;
+                           System.out.println("start" + startMark);
+                           System.out.println("end" + endMark);
+                        Object obj=textArea_hex.getHighlighter().addHighlight(startMark%2==0?startMark:startMark-1,endMark%2==0?endMark:endMark+1,DefaultHighlighter.DefaultPainter);
+                        Object o = textArea_normal.getHighlighter().addHighlight(startMark /2, endMark / 2+endMark%2, DefaultHighlighter.DefaultPainter);
                     } catch (BadLocationException ex) {
                         ex.printStackTrace();
                     }

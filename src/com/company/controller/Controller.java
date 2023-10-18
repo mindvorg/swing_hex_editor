@@ -22,23 +22,26 @@ public class Controller extends JFrame {
 //    private JMenu help = new JMenu("Help");
 
     private int levelScrollBar = 0;
+    private final JTextArea numCols =new JTextArea(0,3);
+
+
 
     private JPanel panel = new JPanel();
-    private final JTextArea textArea_normal = new JTextArea(16, 16);
-    private final JTextArea textArea_hex = new JTextArea(16, 16);
+    private final JTextArea textArea_normal = new JTextArea(6,     8);
+    private final JTextArea textArea_hex = new JTextArea(6, 24);
     private JFileChooser fc = new JFileChooser();
     private JScrollPane scroll = new JScrollPane(panel);
 
     private JMenu file = new JMenu("File");
     private JMenuBar menu = new JMenuBar();
-    private TextListener text = new TextListener(textArea_normal, textArea_hex);
+    private TextListener text = new TextListener(textArea_normal, textArea_hex, numCols);
 
 
     public Controller() throws HeadlessException {
         //settings
         super("Name");
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        this.setBounds(screenSize.width / 2 - 200, screenSize.height / 2 - 200, 400, 400);
+        this.setBounds(screenSize.width / 2 - 200, screenSize.height / 2 - 200, 500, 400);
         textArea_normal.setLineWrap(true);
         textArea_hex.setLineWrap(true);
         textArea_hex.setBorder(BorderFactory.createTitledBorder("hex"));
@@ -55,13 +58,18 @@ public class Controller extends JFrame {
 //        textArea_hex.setAutoscrolls(false);
 //        //panel.putClientProperty("JTextAr");
 //        textArea_hex.setText("sd");
+
+        numCols.setEditable(false);
+
+        //panel.add(numCols); делается вместе с корректным переносом на новые строки
         panel.add(textArea_hex);
         panel.add(textArea_normal);
 
 
         //text.sync();
-        text.syncNorm();
         text.syncHex();
+        text.syncNorm();
+
 
         MouseMarkListener marks = new MouseMarkListener(textArea_normal, textArea_hex);
         marks.sync();
@@ -71,6 +79,14 @@ public class Controller extends JFrame {
         //AbstractDocument doc= (AbstractDocument) textArea_hex.getDocument();
         PlainDocument doc = (PlainDocument) textArea_hex.getDocument();
         doc.setDocumentFilter(new HexFilter());
+
+       /**todo list
+        * сделать двумя списками или просто строками/stringbuilder jtextarea и выводить всё через пробелы и энтеры, мб написать для этого класс
+        * можно у алисы спросить как она думает лучше или что-то типа такого
+        * 
+        * */
+
+
 
         //граница опасной зоны!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         add(scroll);
@@ -114,6 +130,11 @@ public class Controller extends JFrame {
         public void actionPerformed(ActionEvent e) {
             saveFile();
         }
+    };
+    Action replace=new AbstractAction("replace") {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            System.out.println("asd");}
     };
 
     private void openFile(String fileName) throws IOException {//надо вынести в отдельный файл по работе с файлами
