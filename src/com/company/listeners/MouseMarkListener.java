@@ -97,8 +97,11 @@ public class MouseMarkListener {
                         startMark = startMark == endMark ? startMark - textArea_hex.getSelectedText().length() : startMark;
                            System.out.println("start" + startMark);
                            System.out.println("end" + endMark);
-                        Object obj=textArea_hex.getHighlighter().addHighlight(startMark%2==0?startMark:startMark-1,endMark%2==0?endMark:endMark+1,DefaultHighlighter.DefaultPainter);
-                        Object o = textArea_normal.getHighlighter().addHighlight(startMark /2, endMark / 2+endMark%2, DefaultHighlighter.DefaultPainter);
+                      //if marked not full byte need to move caret left at 1 pos
+                        if(startMark%2!=0){textArea_hex.setSelectionStart(textArea_hex.getSelectionStart()-1);}
+                        if(endMark%2!=0){textArea_hex.setSelectionEnd(textArea_hex.getSelectionEnd()+1);}
+                        textArea_hex.getHighlighter().addHighlight(startMark%2==0?startMark:startMark-1,endMark%2==0?endMark:endMark+1,DefaultHighlighter.DefaultPainter);
+                        textArea_normal.getHighlighter().addHighlight(startMark /2, endMark / 2+endMark%2, DefaultHighlighter.DefaultPainter);
                     } catch (BadLocationException ex) {
                         ex.printStackTrace();
                     }

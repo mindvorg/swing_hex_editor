@@ -34,22 +34,53 @@ public class HexFilter extends DocumentFilter {
 //        }
 //
 //        System.out.println("good");
+        System.out.println("problemo el here:"+fb.getDocument().getText(0,fb.getDocument().getLength())+"|offset:"+offset+"|text:"+text+"|atribute"+attrs);
+        if (text.matches("[0-9a-fA-F\n]+")||text.isEmpty()) {
 
-        if (text.matches("[0-9a-fA-F]+")) {
-            super.replace(fb, offset, length, text, attrs);
+
+            super.insertString(fb, offset, text , attrs);
+
+            StringBuilder str=new StringBuilder(fb.getDocument().getText(0,fb.getDocument().getLength()).replaceAll("\n",""));
+            System.out.println(str);
+            int count=0;
+            for (int i = 0; i <str.length() ; i++,count++) {
+                if(count%16==0&&count>0){count =-1;str.insert(i,"\n");
+                }
+            }
+            System.out.println(str);
+
+            //super.replace(fb,0,str.length(), String.valueOf(str),attrs);
+            super.remove(fb,0,fb.getDocument().getLength());//какая-то проблема с переносом в нормальном тексте, разобраться через выводы
+            super.insertString(fb,0, String.valueOf(str),attrs);
+
+            if(offset%15==0&&offset>0) {
+
+                System.out.println("replace need to \\ n");
+       //         super.insertString(fb, offset, text + "\n", attrs);
+                //переписать с доп функцией, которая каждый раз будет просто прогонять текст и если что добавлять \n
+                /*fb.getDocument().getText(0,fb.getDocument().getLength())- документ без последней напечатанной буквы
+                 *offset- позиция в строке последней буквы(индекс)
+                 * text-последняя вставленная буква
+                 *в fb вставляем измененный текст, в text пустой символ?
+                 *  */
+
+            }
         }
     }
 
     @Override
     public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
-        if (string.matches("[0-9a-fA-F]+")) {
-                super.insertString(fb, offset, string, attr);
+        System.out.println("problemka tut");//добавить сюда возможность добавлять \n и по идее смогу делить на 16 и 8 символов
+        if(string.length()%16==0) {System.out.println("insert need to \\ n");}
+        if (string.matches("[0-9a-fA-F\0]+")) {
+
+            super.insertString(fb, offset, string, attr);
         }
     }
 
     @Override
     public void remove(FilterBypass fb, int offset, int length) throws BadLocationException {
+        System.out.println("delete tut");
         super.remove(fb, offset, length);
-
     }
 }
