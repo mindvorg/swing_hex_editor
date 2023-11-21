@@ -1,10 +1,11 @@
 package com.company.controller;
 
 import com.company.converter.HexFilter;
+import com.company.converter.NormFilter;
 import com.company.listeners.MouseMarkListener;
 import com.company.listeners.TextListener;
+import com.company.models.TableModel;
 
-import javax.print.Doc;
 import javax.swing.*;
 import javax.swing.text.*;
 import java.awt.*;
@@ -24,7 +25,7 @@ public class Controller extends JFrame {
 
     private int levelScrollBar = 0;
     private final JTextArea numCols = new JTextArea(0, 3);
-
+    private int caretPos=0;
 
     private JPanel panel = new JPanel();
     private JTextArea textArea_normal = new JTextArea(6, /*8*/25);
@@ -41,7 +42,7 @@ public class Controller extends JFrame {
         //settings
         super("Name");
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        this.setBounds(screenSize.width / 2 - 200, screenSize.height / 2 - 200, 500, 400);
+        this.setBounds(screenSize.width / 2 - 200, screenSize.height / 2 - 200, 1000, 400);
         textArea_normal.setLineWrap(true);
         textArea_hex.setLineWrap(true);
         textArea_hex.setBorder(BorderFactory.createTitledBorder("hex"));
@@ -66,6 +67,14 @@ public class Controller extends JFrame {
         textArea_hex.setTabSize(8);
 
         //panel.add(numCols); делается вместе с корректным переносом на новые строки
+        JTable table=new JTable(4,4);
+        table.isEditing();
+        table.setValueAt("asd",1,1);
+        // мы делаем клаас поле, у него ограничение в 2 символа, это JTextArea и на него вешается listener
+      //  panel.add(table);
+
+        TableModel tbl=new TableModel();
+       // panel.add(tbl);
         panel.add(textArea_hex);
         panel.add(textArea_normal);
 
@@ -81,14 +90,29 @@ public class Controller extends JFrame {
 
         //filter to HexText
         //AbstractDocument doc= (AbstractDocument) textArea_hex.getDocument();
-        PlainDocument doc = (PlainDocument) textArea_hex.getDocument();
-        doc.setDocumentFilter(new HexFilter());
 
-        /**todo list
-         * сделать двумя списками или просто строками/stringbuilder jtextarea и выводить всё через пробелы и энтеры, мб написать для этого класс
-         * можно у алисы спросить как она думает лучше или что-то типа такого
-         *
-         * */
+
+                PlainDocument docHex = (PlainDocument) textArea_hex.getDocument();
+        docHex.setDocumentFilter(new HexFilter());
+        PlainDocument docNorm=(PlainDocument) textArea_normal.getDocument();
+        docNorm.setDocumentFilter(new NormFilter());
+//        ((AbstractDocument) textArea_hex.getDocument()).setDocumentFilter(new Filter());
+/*        textArea_hex.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+
+                caretPos=textArea_hex.getCaretPosition();            }
+            @Override
+            public void keyReleased(KeyEvent e) {
+                textArea_hex.setCaretPosition(caretPos);
+            }
+
+            @Override
+            public void keyTyped(KeyEvent e) {
+            }
+        });*/
+
+
 
 
         //граница опасной зоны!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -122,6 +146,7 @@ public class Controller extends JFrame {
         });
         return textArea;
     }
+
     private static void limitLineLength(JTextArea textArea,int maxLength) throws BadLocationException {
         Document doc=textArea.getDocument();
         int lineCount=textArea.getLineCount();

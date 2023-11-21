@@ -31,18 +31,28 @@ public class TextListener {
 
                 if (!isUpdating) {
                     isUpdating = true;
-                    String tmp = textArea_normal.getText().replaceAll("\n", "");
+
+                    String tmp = "";
+                    try {
+                        tmp = e.getDocument().getText(e.getOffset(),e.getLength()).replaceAll("\n", "");
+                    } catch (BadLocationException ex) {
+                        ex.printStackTrace();
+                    }
+              //      tmp = textArea_normal.getText().replaceAll("\n", "");
                     StringBuilder encrypted = new StringBuilder();
                     for (int i = 0; i < tmp.length(); i++) {
                         int c = tmp.charAt(i);
-                        if (i != 0 && i % 8 == 0) encrypted.append("\n");
+  //                      if (i != 0 && i % 8 == 0) encrypted.append("\n");
                         encrypted.append(Integer.toHexString(c).length() == 2 ? Integer.toHexString(c) : "0" + Integer.toHexString(c));
                         //   System.out.println("i="+i);
 
                     }
+                    System.out.println("proverka sna insert");//надо чтобы было это и добиться проверкой команд textArea_hex.insert/remove разных выводов текста
                     System.out.println("enc=" + encrypted);
 
-                    textArea_hex.setText(String.valueOf(encrypted));//можно вставлять текст, это ускорит, но надо понимать куда вставлять(позиция обычная*2) но надо узнать позицию
+                    textArea_hex.insert(String.valueOf(encrypted),e.getOffset()*2);//можно вставлять текст, это ускорит, но надо понимать куда вставлять(позиция обычная*2) но надо узнать позицию
+
+                    //        updateTextArea(textArea_hex,textArea_normal,16);
                     isUpdating = false;
                 }
 
@@ -52,14 +62,32 @@ public class TextListener {
             public void removeUpdate(DocumentEvent e) {
                 if (!isUpdating) {
                     isUpdating = true;
-                    String tmp = textArea_normal.getText().replaceAll("\n", "");
-                    StringBuilder encrypted = new StringBuilder();
+                    String tmp = "";
+//                    try {
+//                        tmp = e.getDocument().getText(e.getOffset(),e.getLength()).replaceAll("\n", "");
+//                    } catch (BadLocationException ex) {
+//                            ex.printStackTrace();
+//                    }
+                    tmp=textArea_normal.getText().replaceAll("\n","");
+                    StringBuilder encrypted = new StringBuilder("");
                     for (int i = 0; i < tmp.length(); i++) {
                         int c = tmp.charAt(i);
-                        if (i != 0 && i % 8 == 0) encrypted.append("\n");
+      //                if (i != 0 && i % 8 == 0) encrypted.append("\n");
                         encrypted.append(Integer.toHexString(c).length() == 2 ? Integer.toHexString(c) : "0" + Integer.toHexString(c));
                     }
-                    textArea_hex.setText(String.valueOf(encrypted));//можно вставлять текст, это ускорит, но надо понимать куда вставлять(позиция обычная*2) но надо узнать позицию
+                    System.out.println("proverka sna remove");//должно быть это+
+                    System.out.println(encrypted);
+                    //textArea_hex.setText(String.valueOf(encrypted));//можно вставлять текст, это ускорит, но надо понимать куда вставлять(позиция обычная*2) но надо узнать позицию
+                    System.out.println("bef"+textArea_hex.getText());
+                 //   textArea_hex.replaceRange(null,e.getOffset()*2,(e.getOffset()+e.getLength())*2);
+                    try {
+                        System.out.println("offset"+e.getOffset()+" length"+e.getLength()*2);
+                        textArea_hex.getDocument().remove(e.getOffset()*2,e.getLength()*2);
+                    } catch (BadLocationException ex) {
+                        ex.printStackTrace();
+                    }
+                    System.out.println("af"+textArea_hex.getText());
+                    //  updateTextArea(textArea_normal,textArea_hex,16);
                     isUpdating = false;
                 }
             }
@@ -95,7 +123,7 @@ public class TextListener {
 
                     // if(textArea_hex.getText().length()%16==0&&textArea_hex.getText().length()>0)textArea_hex.append("\n");
                     //
-
+                 //   updateTextArea(textArea_hex,textArea_normal,8);
                     isUpdating = false;
                 }
             }
@@ -124,22 +152,9 @@ public class TextListener {
 //                    }
 //                    textArea_hex.setText(addN.toString());
                     //
-
+           //         updateTextArea(textArea_hex,textArea_normal,8);
                     isUpdating = false;
                 }
-//                if (!isUpdating && textArea_hex.getDocument().getLength() % 2 == 0) {
-//                    isUpdating = true;
-//                    StringBuilder sb = new StringBuilder();
-//                    for (int i = 0; i < textArea_hex.getText().length(); i += 2) {
-//                        String hexPair = textArea_hex.getText().substring(i, i + 2);
-//                        int intValue = Integer.parseInt(hexPair, 16);
-//                        char[] charArray = Character.toChars(intValue);
-//                        sb.append(charArray);
-//                    }
-//
-//                    textArea_normal.setText(String.valueOf(sb));
-//                    isUpdating = false;
-//                }
             }
 
             @Override
@@ -347,16 +362,35 @@ public class TextListener {
         for (int i = 0; i < text.length(); i++) {
             if (text.charAt(i) == '\n') {
                 int lineLength = 0;
-                for (int j = i; j >0 && text.charAt(j-1)!='\n'; j--) {
+                for (int j = i; j > 0 && text.charAt(j - 1) != '\n'; j--) {
                     lineLength++;
                 }
-                if(lineLength>wrap){
-                    text=text.substring(0,i)+"\n"+text.substring(i);
-                    doc.remove(i-1,1);
-                    doc.insertString(i,"\n",null);
+                if (lineLength > wrap) {
+                    text = text.substring(0, i) + "\n" + text.substring(i);
+                    doc.remove(i - 1, 1);
+                    doc.insertString(i, "\n", null);
+                } else {
+                    break;
                 }
-                else {break;}
             }
         }
     }
+
+    private void updateTextArea(JTextArea source, JTextArea target, int breakLength) {
+        String text = source.getText().replaceAll("\n", "");
+        StringBuilder formattedText = new StringBuilder();
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            formattedText.append(c);
+            if ((i + 1) % breakLength == 0) {
+                formattedText.append("\n");
+            }
+        }
+        System.out.println("target"+source.getText());
+        target.setText(formattedText.toString());
+    }
+
+
 }
+
+
