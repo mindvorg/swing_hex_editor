@@ -2,19 +2,24 @@ package com.company.controller;
 
 import com.company.converter.HexFilter;
 import com.company.converter.NormFilter;
+
+import com.company.gigachatTable.MyJTable;
 import com.company.listeners.MouseMarkListener;
 import com.company.listeners.TextListener;
-import com.company.models.TableModel;
+
 
 import javax.swing.*;
 import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 public class Controller extends JFrame {
 
@@ -30,10 +35,12 @@ public class Controller extends JFrame {
     private JPanel panel = new JPanel();
     private JTextArea textArea_normal = new JTextArea(6, /*8*/25);
     private JTextArea textArea_hex = new JTextArea(6, /*12*/25);
+    private MyJTable table=new MyJTable();
     private JFileChooser fc = new JFileChooser();
     private JScrollPane scroll = new JScrollPane(panel);
 
     private JMenu file = new JMenu("File");
+    private JMenu utils= new JMenu("utils");
     private JMenuBar menu = new JMenuBar();
     private TextListener text = new TextListener(textArea_normal, textArea_hex, numCols);
 
@@ -42,7 +49,7 @@ public class Controller extends JFrame {
         //settings
         super("Name");
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        this.setBounds(screenSize.width / 2 - 200, screenSize.height / 2 - 200, 1000, 400);
+        this.setBounds(screenSize.width / 2 - 400, screenSize.height / 2 - 200, 800, 400);
         textArea_normal.setLineWrap(true);
         textArea_hex.setLineWrap(true);
         textArea_hex.setBorder(BorderFactory.createTitledBorder("hex"));
@@ -62,21 +69,58 @@ public class Controller extends JFrame {
 //        textArea_hex.setText("sd");
         numCols.setEditable(false);
 
-
         panel.setAutoscrolls(false);
         textArea_hex.setTabSize(8);
 
-        //panel.add(numCols); делается вместе с корректным переносом на новые строки
-        JTable table=new JTable(4,4);
-        table.isEditing();
-        table.setValueAt("asd",1,1);
-        // мы делаем клаас поле, у него ограничение в 2 символа, это JTextArea и на него вешается listener
-      //  panel.add(table);
 
-        TableModel tbl=new TableModel();
-       // panel.add(tbl);
-        panel.add(textArea_hex);
-        panel.add(textArea_normal);
+        ArrayList<Integer[]> selection=new ArrayList<>();
+        MouseListener listener=new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+
+            int row=table.rowAtPoint(e.getPoint());
+            int col=table.columnAtPoint(e.getPoint());
+            if(row!=-1&&col!=-1){
+                selection.add(new Integer[]{row,col});
+            }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                System.out.println("new marked");
+                int row=table.rowAtPoint(e.getPoint());
+                int col=table.columnAtPoint(e.getPoint());
+                if(row!=-1&&col!=-1){
+                    selection.add(new Integer[]{row,col});
+                }
+                for (Integer[] elem :
+                     selection) {
+                    System.out.println(Arrays.toString(elem));
+                }
+           //     table.mark(selection);
+                selection.clear();
+            }
+        };
+      //  table.addMouseListener(listener);
+       // table.setSelectionMode(1);
+
+        panel.add(table);
+//        Model model=new Model(3,3);
+//        JTable videoTable=new JTable(model);
+//        for (int i = 0; i < videoTable.getRowCount(); i++) {
+//            //for (int j = 0; j < videoTable.getRowCount(); j++) {
+//                videoTable.getColumnModel().getColumn(i).setCellEditor(new DefaultCellEditor(new JTextField()));
+//            //}
+//
+//        }
+//
+//        videoTable.setCellSelectionEnabled(true);
+//        videoTable.setDefaultEditor(Object.class,new DefaultCellEditor(new JTextField()));
+
+
+//        panel.add(videoTable);
+//        panel.add(textArea_hex);
+        //panel.add(textArea_normal);
 
 
         text.sync();
@@ -88,29 +132,13 @@ public class Controller extends JFrame {
         marks.sync();
 
 
-        //filter to HexText
-        //AbstractDocument doc= (AbstractDocument) textArea_hex.getDocument();
 
-
-                PlainDocument docHex = (PlainDocument) textArea_hex.getDocument();
+        PlainDocument docHex = (PlainDocument) textArea_hex.getDocument();
         docHex.setDocumentFilter(new HexFilter());
         PlainDocument docNorm=(PlainDocument) textArea_normal.getDocument();
         docNorm.setDocumentFilter(new NormFilter());
 //        ((AbstractDocument) textArea_hex.getDocument()).setDocumentFilter(new Filter());
-/*        textArea_hex.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
 
-                caretPos=textArea_hex.getCaretPosition();            }
-            @Override
-            public void keyReleased(KeyEvent e) {
-                textArea_hex.setCaretPosition(caretPos);
-            }
-
-            @Override
-            public void keyTyped(KeyEvent e) {
-            }
-        });*/
 
 
 
@@ -119,9 +147,13 @@ public class Controller extends JFrame {
         add(scroll);
         setJMenuBar(menu);
         menu.add(file);
+        menu.add(utils);
         file.add(open);
         file.add(save);
-        file.add(replace);
+        //file.add(replace);
+        utils.add(resize);
+        utils.add(find);
+       // utils.addSeparator();
         file.addSeparator();
 
 
@@ -172,16 +204,57 @@ public class Controller extends JFrame {
 
 
     Action open = new AbstractAction("Open") {
+
         @Override
         public void actionPerformed(ActionEvent e) {
-            if (fc.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+/*            if (fc.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
                 try {
                     openFile(String.valueOf(fc.getSelectedFile().getAbsoluteFile()));
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
-            }
+            }*/
+            if (fc.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                final SwingWorker<Void, String> worker = new SwingWorker<>() {
+                    @Override
+                    protected Void doInBackground() throws Exception {
+                        try (BufferedReader reader = new BufferedReader(new FileReader(fc.getSelectedFile()))) {
+                            long fileSize = fc.getSelectedFile().length();
+                            long bytesRead = 0;
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                bytesRead += line.length();
+                                StringBuilder str=new StringBuilder();
+                                /*
+                        int intValue = Integer.parseInt(hexPair, 16);
+                        char[] charArray = Character.toChars(intValue);*/
+                                for (int i = 0; i < line.length(); i++) {
+                                    str.append(Integer.toHexString(line.charAt(i)));
+                                }
+                                publish(String.valueOf(str));  // Опубликовать текущую строку
+                                setProgress((int) ((bytesRead * 100) / fileSize));
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        return null;
+                    }
+                    @Override
+                    protected void process(java.util.List<String> chunks) {
+                        for (String chunk : chunks) {
+                            System.out.println(chunk + "\n-----------------------------------------------\n");
+                        }
+                    }
+                    @Override
+                    protected void done() {
+                        // progressBar.setValue(100);
+                        //  JOptionPane.showMessageDialog(LargeFileReaderApp.this, "File loaded successfully!");
+                        System.out.println("done");
+                    }
+                };
 
+                worker.execute();
+            }
         }
     };
     Action save = new AbstractAction("Save") {
@@ -210,7 +283,32 @@ public class Controller extends JFrame {
             else textArea_normal.insert(text1.getText(), Integer.parseInt(textField.getText()));
         }
     };
-
+    Action find=new AbstractAction("find") {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            System.out.println("check resize");
+            JPanel panel = new JPanel(new GridLayout(4, 3));
+            JTextField textField = new JTextField();
+            textField.setBorder(BorderFactory.createTitledBorder("введите текст для поиска"));
+            panel.add(textField);
+            JOptionPane.showMessageDialog(null, panel);
+            table.find(textField.getText());
+            System.out.println("all clear");
+        }
+    };
+    Action resize=new AbstractAction("change № columns") {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            System.out.println("check resize");
+            JPanel panel = new JPanel(new GridLayout(4, 3));
+            JTextField textField = new JTextField();
+            textField.setBorder(BorderFactory.createTitledBorder("количество колонок"));
+            panel.add(textField);
+            JOptionPane.showMessageDialog(null, panel);
+            System.out.println("change to "+Integer.parseInt(textField.getText())+" cols");
+            table.changeNumCols(Integer.parseInt(textField.getText()));
+        }
+    };
     private void openFile(String fileName) throws IOException {//надо вынести в отдельный файл по работе с файлами
         FileReader fr;
         try {
@@ -246,6 +344,110 @@ public class Controller extends JFrame {
             }
         }
     }
+   /* class LimitedCellEditor extends DefaultCellEditor{
+        private JTextField textField;
+        public LimitedCellEditor(){
+            super(new JTextField());
+            textField=(JTextField) editorComponent;
+            textField.setDocument(new LimitedDocument(2));
 
+        }
 
+    }
+
+    private class LimitedDocument extends PlainDocument {
+        private int limit;
+        public LimitedDocument(int i) {
+        limit=i;
+        }
+
+        @Override
+        public void insertString(int offs, String str, AttributeSet a) throws BadLocationException {
+            if (str==null) return;
+            if((getLength())+str.length()<=limit){
+            super.insertString(offs, str, a);}
+            else {
+                int reminder=limit-getLength();
+                if(reminder>0){
+                    super.insertString(offs,str.substring(0,reminder),a);
+                }
+            }
+        }
+    }*/
+/*   static class LimitedCellEditor extends DefaultCellEditor {
+       private JTextField textField;
+       private JTable table;
+
+       public LimitedCellEditor() {
+           super(new JTextField());
+           textField = (JTextField) editorComponent;
+           textField.setDocument(new LimitedDocument(2)); // Ограничение на 2 символа
+
+           textField.addKeyListener(new KeyListener() {
+               @Override
+               public void keyTyped(KeyEvent e) {
+                   // Обработка события ввода символа
+               }
+
+               @Override
+               public void keyPressed(KeyEvent e) {
+                   // Обработка события нажатия клавиши
+               }
+
+               @Override
+               public void keyReleased(KeyEvent e) {
+                   if (textField.getText().length() >= 2) {
+                       moveCursor();
+                   }
+               }
+           });
+       }
+
+       private void moveCursor() {
+           SwingUtilities.invokeLater(() -> {
+               int editingRow = table.getEditingRow();
+               int editingColumn = table.getEditingColumn();
+               if (editingRow != -1 && editingColumn != -1) {
+                   if (editingColumn < table.getColumnCount() - 1) {
+                       table.changeSelection(editingRow, editingColumn + 1, false, false);
+                   } else if (editingRow < table.getRowCount() - 1) {
+                       table.changeSelection(editingRow + 1, 0, false, false);
+                   }
+               }
+           });
+       }
+
+       @Override
+       public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+           this.table = table;
+           return super.getTableCellEditorComponent(table, value, isSelected, row, column);
+       }
+   }
+
+    // Документ для ограничения количества символов в JTextField
+    static class LimitedDocument extends PlainDocument {
+        private int limit;
+
+        public LimitedDocument(int limit) {
+            this.limit = limit;
+        }
+
+        @Override
+        public void insertString(int offset, String str, AttributeSet attr) throws BadLocationException {
+            System.out.println("asd");
+            if (str == null) return;
+
+            if ((getLength() + str.length()) <= limit) {
+                System.out.println("less");
+                super.insertString(offset, str, attr);
+            } else {
+                System.out.println("more");
+                int remainder = limit - getLength();
+                if (remainder > 0) {
+                    System.out.println("remainder >0");
+                    super.insertString(offset, str.substring(0, remainder), attr);
+                }
+            }
+        }
+    }*/
 }
