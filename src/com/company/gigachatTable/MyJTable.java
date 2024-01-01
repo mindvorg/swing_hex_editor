@@ -17,8 +17,6 @@ import java.util.Comparator;
 
 public class MyJTable extends JTable implements ListSelectionListener {
     private Model model;
-    private int lastR,lastC;
-
     public MyJTable() {
         //   super(new DefaultTableModel(8, 8));
 
@@ -38,8 +36,6 @@ public class MyJTable extends JTable implements ListSelectionListener {
                 textField.setDocument(new JTextFieldLimit(2)); // Ограничение символов до 2
                 textField.setHorizontalAlignment(JTextField.CENTER);
                 textField.setFont(new Font("Arial", Font.PLAIN, 12));
-                int finalI = i;
-                int finalJ = j;
 
                 //     textField.setBorder(BorderFactory.createEmptyBorder());
 //                textField.addKeyListener(new java.awt.event.KeyAdapter() {
@@ -62,6 +58,14 @@ public class MyJTable extends JTable implements ListSelectionListener {
             }
         }
 
+    }
+
+    public int getNumCols() {
+        return model.getColumnCount();
+    }
+
+    public int getNumRows() {
+        return model.getRowCount();
     }
 
     @Override
@@ -98,6 +102,42 @@ public class MyJTable extends JTable implements ListSelectionListener {
 
     }
 
+    public void replace(boolean selected, int row, int col, String text) {
+        if(text.length()%2!=0)text+=0;
+        ArrayList<String> replaceData=new ArrayList<>();
+        for (int i = 0; i < text.length(); i+=2) {
+            replaceData.add(text.substring(i,i+2));
+        }
+        if (selected)
+        {//insert with replace
+            for (String replaceDatum : replaceData) {
+                if (col > model.getColumnCount() - 1) {
+                    row++;
+                    if (row > getRowCount() - 1)
+                        model.addRow();//рассмотреть случай когда возможно надо добавлять ряд
+                    model.fireTableRowsInserted(0, getRowCount());
+                    col = 1;
+                }
+                if (row > getRowCount() - 1)//если вставлять после в новый ряд
+                    model.addRow();
+                model.fireTableRowsInserted(0, getRowCount());
+
+                model.setValueAt(replaceDatum, row, col);
+                col++;
+            }
+        }
+        else
+        {//just insert and move data
+            if(col==getNumCols()&&row==getNumRows())
+                col--;
+            if(row>getRowCount()-1)
+            {col=getNumCols()-1;row--;}
+
+            model.insertWithShift(replaceData,row,col);
+            model.fireTableDataChanged();
+        }
+        model.fireTableDataChanged();
+    }
 
 
     /*   public void mark(ArrayList<Integer[]> list){
@@ -135,8 +175,8 @@ public class MyJTable extends JTable implements ListSelectionListener {
 //                    System.out.println("length:"+getLength());
               //      if(model.getValueAt(editingRow,editingColumn).toString().isEmpty())
                         super.insertString(offset, str, attr);
-                    lastR=editingRow;
-                    lastC=editingColumn;
+//                    lastR=editingRow;
+//                    lastC=editingColumn;
             //        else {super.replace(offset,1,str,attr);}
                 } else {
                     System.out.println("next");

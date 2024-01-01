@@ -10,50 +10,56 @@ import java.util.List;
 public class Model extends AbstractTableModel {
     private int numCol = 8, numRow = 8;
     private ArrayList<ArrayList<String>> data = new ArrayList<>();
-
-
     public Model(int numCol, int numRow) {
-        this.numCol = numCol+1;
-        this.numRow = numRow+1;
+        this.numCol = numCol + 1;
+        this.numRow = numRow + 1;
 
-        System.out.println(numCol+numRow);
+        System.out.println(numCol + numRow);
 
         for (int i = 0; i < this.numRow; i++) {
             data.add(new ArrayList<>());
             System.out.println();
             for (int j = 0; j < this.numCol; j++) {
-                data.get(i).add("");
+                int tmp = i * numRow + j - 1 - numRow;
+                data.get(i).add(String.valueOf(tmp));
             }
         }
-                                                            for (int i = 1; i < this.numRow; i++) {
-                                                                data.get(i).set(0,Integer.toHexString(i-1));
-                                                            }
-                                                            for (int i = 1; i < this.numCol; i++) {
-                                                                data.get(0).set(i,Integer.toHexString(i-1));
-                                                            }
+        for (int i = 1; i < this.numRow; i++) {
+            data.get(i).set(0, Integer.toHexString(i - 1));
+        }
+        for (int i = 1; i < this.numCol; i++) {
+            data.get(0).set(i, Integer.toHexString(i - 1));
+        }
+
+
+
+
+
         //System.out.println(output());
     }
 
     @Override
     public boolean isCellEditable(int rowIndex, int columnIndex) {
 
-                                                            return columnIndex != 0 && rowIndex != 0;
-     //   return true;
+        return columnIndex != 0 && rowIndex != 0;
+
     }
 
     @Override
     public int getRowCount() {
         return numRow;
+
     }
 
     @Override
     public int getColumnCount() {
         return numCol;
+
     }
 
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
-        System.out.println("want to get"+rowIndex+" "+columnIndex);
+        //System.out.println("want to get" + rowIndex + " " + columnIndex);
         return data.get(rowIndex).get(columnIndex);
     }
 
@@ -72,6 +78,7 @@ public class Model extends AbstractTableModel {
                 ", data=" + output() +
                 '}';
     }
+
     private String output() {
         StringBuilder output = new StringBuilder();
         for (int i = 1; i < numRow; i++)
@@ -83,13 +90,13 @@ public class Model extends AbstractTableModel {
     }
 
     public void addRow() {
-       numRow++;
+        numRow++;
         ArrayList<String> tmp = new ArrayList<>();
-        tmp.add(Integer.toHexString(numRow-2));
+        tmp.add(Integer.toHexString(numRow - 2));
         for (int j = 1; j < numCol; j++) {
             tmp.add("");
         }
-                                                    //        tmp.set(0,Integer.toHexString(numRow));
+        //        tmp.set(0,Integer.toHexString(numRow));
         System.out.println("add row");
         data.add(tmp);
     }
@@ -105,7 +112,7 @@ public class Model extends AbstractTableModel {
         newData.add(newCol);
 
         newCol = new ArrayList<>();
-                                                                     newCol.add(Integer.toHexString(0));
+        newCol.add(Integer.toHexString(0));
 
         int k = 0;
         for (int i = 1; i < numRow; i++) {
@@ -119,11 +126,11 @@ public class Model extends AbstractTableModel {
                     k = 0;
                     newData.add(newCol);
                     newCol = new ArrayList<>();
-                                                                    newCol.add(Integer.toHexString(newData.size()-1));
+                    newCol.add(Integer.toHexString(newData.size() - 1));
                 }
             }
         }
-        for (int i = 0; i < newNumCol-k; i++) {
+        for (int i = 0; i < newNumCol - k; i++) {
             newCol.add("");
         }
 
@@ -160,40 +167,79 @@ public class Model extends AbstractTableModel {
             }
         }
     }
-    private void fixAfterClear(){
+
+    private void fixAfterClear() {
         if (!data.get(numRow - 1).get(numCol - 1).isEmpty()) {
             System.out.println("add");
             data.add(new ArrayList<>());
             numRow++;
-                data.get(numRow - 1).add(Integer.toHexString(numRow-2 ));
+            data.get(numRow - 1).add(Integer.toHexString(numRow - 2));
             for (int j = 1; j < numCol; j++) {
                 data.get(numRow - 1).add("");
             }
         }
         for (int i = 1; i < this.numCol; i++) {
-            data.get(0).set(i,Integer.toHexString(i-1));
+            data.get(0).set(i, Integer.toHexString(i - 1));
         }
     }
 
     public Integer[] findInData(String text) {
-        ArrayList<String> findData= new ArrayList<>();
-        for (int i = 0; i < text.length(); i=i+2) {
-            findData.add(text.substring(i,i+2));
-            System.out.println(text.substring(i,i+2));
+        ArrayList<String> findData = new ArrayList<>();
+        if (text.length() >= 2) {
+            for (int i = 0; i < text.length(); i = i + 2) {
+                findData.add(text.substring(i, i + 2));
+                //    System.out.println(text.substring(i,i+2));
+            }
+        } else {
+            findData.add(text);
         }
         System.out.println(findData);
-        ArrayList<String> existData=new ArrayList<>();
+        ArrayList<String> existData = new ArrayList<>();
         for (int i = 1; i < numRow; i++) {
-            ArrayList<String> tmp=new ArrayList<>(data.get(i));
+            ArrayList<String> tmp = new ArrayList<>(data.get(i));
             tmp.remove(0);
             existData.addAll(tmp);
 //            System.out.println(tmp);
 //            System.out.println(data.get(i));
         }
-        System.out.println(existData);
+   //     System.out.println(existData);
         //System.out.println(data.stream().anyMatch(l-> Collections.indexOfSubList(l,findData)!=-1));
-        int index=Collections.indexOfSubList(existData,findData);
-        System.out.println(index+"cords: "+"row"+(index/numRow)+"col: "+(index-(index/numRow))%numCol);
-        return new Integer[]{index/numRow+1,(index-(index/numRow))%numCol+1};
+        int index = Collections.indexOfSubList(existData, findData);
+        System.out.println(index + "cords: " + "row" + ((index / (numCol-1)) + 1) + "col: " + (index % (numCol - 1) + 1));
+        return new Integer[]{(index / (numCol-1)) + 1, (index % (numCol - 1) + 1)};
+    }
+
+    public void insertWithShift(ArrayList<String> insertData,int row, int col){
+        ArrayList<String> existData = new ArrayList<>();
+        for (int i = row; i < numRow; i++) {
+            ArrayList<String> tmp = new ArrayList<>(data.get(i));
+            tmp.remove(0);
+            existData.addAll(tmp);
+        }
+        for (int i = 0; i < col-1; i++) {
+            existData.remove(0);
+        }
+        System.out.println("check");
+        for (String replaceDatum : insertData) {//обновляю ячейки прошлой data на новую insertData далее надо вставить следом изначальную existData
+            if (col > numCol - 1) {
+                row++;
+                if (row > getRowCount() - 1)
+                addRow();
+                col = 1;
+            }
+            data.get(row).set( col,replaceDatum);
+            col++;
+        }
+        for (String replaceDatum : existData) {//обновляю ячейки прошлой data на новую insertData далее надо вставить следом изначальную existData
+            if (col > numCol - 1) {
+                row++;
+                if (row > getRowCount() - 1)
+                    addRow();
+                col = 1;
+            }
+            data.get(row).set( col,replaceDatum);
+            col++;
+        }
+
     }
 }

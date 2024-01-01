@@ -1,5 +1,6 @@
 package com.company.controller;
 
+import com.company.converter.Filter;
 import com.company.converter.HexFilter;
 import com.company.converter.NormFilter;
 
@@ -11,6 +12,8 @@ import com.company.listeners.TextListener;
 import javax.swing.*;
 import javax.swing.text.*;
 import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -153,6 +156,9 @@ public class Controller extends JFrame {
         //file.add(replace);
         utils.add(resize);
         utils.add(find);
+        utils.add(replace);
+        utils.add(copyCut);
+        utils.add(delete);
        // utils.addSeparator();
         file.addSeparator();
 
@@ -263,24 +269,39 @@ public class Controller extends JFrame {
             saveFile();
         }
     };
-    Action replace = new AbstractAction("replace") {
-
+    Action replace = new AbstractAction("insert and replace") {
         @Override
         public void actionPerformed(ActionEvent e) {
-            System.out.println("asd");
+
+
             JPanel panel = new JPanel(new GridLayout(4, 3));
-            JTextArea text1 = new JTextArea();
+            JTextArea text1 = new JTextArea(2,6);
+            text1.setLineWrap(true);
+            text1.setTabSize(8);
+            text1.setAutoscrolls(false);
             text1.setBorder(BorderFactory.createTitledBorder("текст замены"));
-            JTextField textField = new JTextField();
-            textField.setBorder(BorderFactory.createTitledBorder("индекс вставки"));
+            PlainDocument docHex = (PlainDocument) text1.getDocument();
+            docHex.setDocumentFilter(new Filter());
+            JSpinner spinnerRows=new JSpinner(new SpinnerNumberModel(0,0,table.getNumRows()-1,1));
+            spinnerRows.setBorder(BorderFactory.createTitledBorder("ряд"));
+
+            JSpinner spinnerCols=new JSpinner(new SpinnerNumberModel(0,0,table.getNumCols()-2,1));
+            spinnerCols.setBorder(BorderFactory.createTitledBorder("столбец"));
             JCheckBox checkBox = new JCheckBox("insert with replace or not");
+            JScrollPane scrol=new JScrollPane(text1);
+
             panel.add(checkBox);
-            panel.add(text1);
-            panel.add(textField);
+            panel.add(spinnerCols);
+            panel.add(spinnerRows);
+            panel.add(scrol);
+
             JOptionPane.showMessageDialog(null, panel);
-            if (checkBox.isSelected())
-                textArea_normal.replaceRange(text1.getText(), Integer.parseInt(textField.getText()), Integer.parseInt(textField.getText()) + text1.getText().length());
-            else textArea_normal.insert(text1.getText(), Integer.parseInt(textField.getText()));
+                /*if (checkBox.isSelected())
+                    System.out.println(spinnerCols.getValue());
+                else System.out.println(spinnerRows.getValue());
+                System.out.println("happy new year");
+                */
+            table.replace(checkBox.isSelected(), (Integer) spinnerRows.getValue()+1, (Integer) spinnerCols.getValue()+1,text1.getText());
         }
     };
     Action find=new AbstractAction("find") {
@@ -307,6 +328,20 @@ public class Controller extends JFrame {
             JOptionPane.showMessageDialog(null, panel);
             System.out.println("change to "+Integer.parseInt(textField.getText())+" cols");
             table.changeNumCols(Integer.parseInt(textField.getText()));
+        }
+    };
+    Action delete=new AbstractAction("delete") {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+
+        }
+    };
+    Action copyCut=new AbstractAction("copy") {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            StringSelection selection = new StringSelection(table.copyCut());
+            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+            clipboard.setContents(selection, selection);
         }
     };
     private void openFile(String fileName) throws IOException {//надо вынести в отдельный файл по работе с файлами
