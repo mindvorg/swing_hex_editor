@@ -140,22 +140,66 @@ public class MyJTable extends JTable implements ListSelectionListener {
     }
 
 
-    /*   public void mark(ArrayList<Integer[]> list){
+       public void mark(ArrayList<Integer[]> list){
            list.sort(Comparator.comparingInt(o -> o[0]));
-           System.out.println(list);
-           for (int i = list.get(0)[0]; i <=list.get(1)[0]; i++) {
-               for (int j = list.get(0)[1]; j <= list.get(1)[1]; j++) {
-               //    getCellRenderer(i,j).getTableCellRendererComponent(this,Color.BLUE,false,false,i,j);
-               //addColumnSelectionInterval(list.get(0)[1],list.get(1)[1]);
-                     //  getCellRenderer(i,j).getTableCellRendererComponent(this,getValueAt(i,j),true,false,i,j).setBackground(Color.BLUE);
+           int r = list.get(0)[0], c = list.get(0)[1];
+           while(r*getNumRows()+c!=list.get(1)[0]*getNumRows()+list.get(1)[1]+1){
+               if (c > getColumnCount() - 1) {
+                   r++;
+                   c = 1;
                }
+               changeSelection(r,c,true,true);
+               c++;
+               //}
            }
+           ListSelectionModel selectionModel=this.getSelectionModel();
+//           selectionModel.setAnchorSelectionIndex(list.get(0)[0]);
+//           selectionModel.setSelectionInterval(list.get(0)[0],list.get(1)[0]);
+           //selectionModel.removeSelectionInterval();
    //        super.setValueAt(Color.RED,0,0);
    //        super.setValueAt(Color.RED,1,1);
    //        changeSelection(1,1,true,true);
            //changeSelection(list.get(0)[0],list.get(0)[1],false,true );
            //changeSelection(list.get(1)[0],list.get(1)[1],false,true);
-       }*/
+       }
+
+    public String copyCut() {
+    return "asd";
+    }
+
+    public void delete(boolean selected, int row, int col, Integer numBytes) {
+
+        if (selected)
+        {//insert with replace
+            for (int i = 0; i < numBytes; i++) 
+                {
+                if (col > model.getColumnCount() - 1) {
+                    row++;
+                    if (row > getRowCount() - 1)
+                        model.addRow();//рассмотреть случай когда возможно надо добавлять ряд
+                    model.fireTableRowsInserted(0, getRowCount());
+                    col = 1;
+                }
+                if (row > getRowCount() - 1)//если вставлять после в новый ряд
+                    model.addRow();
+                model.fireTableRowsInserted(0, getRowCount());
+                model.setValueAt("", row, col);
+                col++;
+            }
+        }
+        else
+        {//just insert and move data
+            if(col==getNumCols()&&row==getNumRows())
+                col--;
+            if(row>getRowCount()-1)
+            {col=getNumCols()-1;row--;}
+
+            model.deleteWithShift(numBytes,row,col);
+        }
+        model.fireTableDataChanged();
+    }
+
+
     // Класс для ограничения символов до 2
     class JTextFieldLimit extends PlainDocument {
         private int limit;
@@ -209,6 +253,7 @@ public class MyJTable extends JTable implements ListSelectionListener {
                 }
             }
         }
+
     }
 
 

@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 
 public class Controller extends JFrame {
 
@@ -33,17 +34,18 @@ public class Controller extends JFrame {
 
     private int levelScrollBar = 0;
     private final JTextArea numCols = new JTextArea(0, 3);
-    private int caretPos=0;
+    private int caretPos = 0;
 
     private JPanel panel = new JPanel();
     private JTextArea textArea_normal = new JTextArea(6, /*8*/25);
     private JTextArea textArea_hex = new JTextArea(6, /*12*/25);
-    private MyJTable table=new MyJTable();
+    private MyJTable table = new MyJTable();
     private JFileChooser fc = new JFileChooser();
     private JScrollPane scroll = new JScrollPane(panel);
+    private ArrayList<Integer[]> selection = new ArrayList<>();
 
     private JMenu file = new JMenu("File");
-    private JMenu utils= new JMenu("utils");
+    private JMenu utils = new JMenu("utils");
     private JMenuBar menu = new JMenuBar();
     private TextListener text = new TextListener(textArea_normal, textArea_hex, numCols);
 
@@ -63,7 +65,6 @@ public class Controller extends JFrame {
  * */
 
 
-
 //        //scroll.putClientProperty("autoscrolls",false);
 //        scroll.setAutoscrolls(false);
 //        textArea_normal.setAutoscrolls(false);
@@ -76,36 +77,37 @@ public class Controller extends JFrame {
         textArea_hex.setTabSize(8);
 
 
-        ArrayList<Integer[]> selection=new ArrayList<>();
-        MouseListener listener=new MouseAdapter() {
+        MouseListener listener = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-
-            int row=table.rowAtPoint(e.getPoint());
-            int col=table.columnAtPoint(e.getPoint());
-            if(row!=-1&&col!=-1){
-                selection.add(new Integer[]{row,col});
-            }
+                selection.clear();
+                int row = table.rowAtPoint(e.getPoint());
+                int col = table.columnAtPoint(e.getPoint());
+                if (row != -1 && col != -1) {
+                    selection.add(new Integer[]{row, col});
+                }
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
                 System.out.println("new marked");
-                int row=table.rowAtPoint(e.getPoint());
-                int col=table.columnAtPoint(e.getPoint());
-                if(row!=-1&&col!=-1){
-                    selection.add(new Integer[]{row,col});
+                int row = table.rowAtPoint(e.getPoint());
+                int col = table.columnAtPoint(e.getPoint());
+                if (selection.get(0)[0] != row || selection.get(0)[1] != col) {
+                    if (row != -1 && col != -1) {
+                        selection.add(new Integer[]{row, col});
+                    }
+                    for (Integer[] elem :
+                            selection) {
+                        System.out.println(Arrays.toString(elem));
+                    }
+                    //     table.mark(selection);
+                    table.clearSelection();
                 }
-                for (Integer[] elem :
-                     selection) {
-                    System.out.println(Arrays.toString(elem));
-                }
-           //     table.mark(selection);
-                selection.clear();
             }
         };
-      //  table.addMouseListener(listener);
-       // table.setSelectionMode(1);
+        table.addMouseListener(listener);
+        // table.setSelectionMode(1);
 
         panel.add(table);
 //        Model model=new Model(3,3);
@@ -127,23 +129,19 @@ public class Controller extends JFrame {
 
 
         text.sync();
-       // text.syncToHex();
-     //    text.syncToNorm();
+        // text.syncToHex();
+        //    text.syncToNorm();
 
 
         MouseMarkListener marks = new MouseMarkListener(textArea_normal, textArea_hex);
         marks.sync();
 
 
-
         PlainDocument docHex = (PlainDocument) textArea_hex.getDocument();
         docHex.setDocumentFilter(new HexFilter());
-        PlainDocument docNorm=(PlainDocument) textArea_normal.getDocument();
+        PlainDocument docNorm = (PlainDocument) textArea_normal.getDocument();
         docNorm.setDocumentFilter(new NormFilter());
 //        ((AbstractDocument) textArea_hex.getDocument()).setDocumentFilter(new Filter());
-
-
-
 
 
         //граница опасной зоны!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -157,9 +155,11 @@ public class Controller extends JFrame {
         utils.add(resize);
         utils.add(find);
         utils.add(replace);
-        utils.add(copyCut);
+        utils.add(copy);
+        utils.add(cut);
         utils.add(delete);
-       // utils.addSeparator();
+
+        // utils.addSeparator();
         file.addSeparator();
 
 
@@ -185,17 +185,17 @@ public class Controller extends JFrame {
         return textArea;
     }
 
-    private static void limitLineLength(JTextArea textArea,int maxLength) throws BadLocationException {
-        Document doc=textArea.getDocument();
-        int lineCount=textArea.getLineCount();
+    private static void limitLineLength(JTextArea textArea, int maxLength) throws BadLocationException {
+        Document doc = textArea.getDocument();
+        int lineCount = textArea.getLineCount();
         for (int i = 0; i < lineCount; i++) {
-            int lineStart= textArea.getLineStartOffset(i);
-            int lineEnd=textArea.getLineEndOffset(i);
-            int lineLength=lineEnd-lineStart-1;
-            if(lineLength>maxLength){
+            int lineStart = textArea.getLineStartOffset(i);
+            int lineEnd = textArea.getLineEndOffset(i);
+            int lineLength = lineEnd - lineStart - 1;
+            if (lineLength > maxLength) {
                 try {
-                    doc.insertString(lineEnd-1,"\n",null);
-                }catch (BadLocationException e){
+                    doc.insertString(lineEnd - 1, "\n", null);
+                } catch (BadLocationException e) {
                     e.printStackTrace();
                 }
             }
@@ -230,7 +230,7 @@ public class Controller extends JFrame {
                             String line;
                             while ((line = reader.readLine()) != null) {
                                 bytesRead += line.length();
-                                StringBuilder str=new StringBuilder();
+                                StringBuilder str = new StringBuilder();
                                 /*
                         int intValue = Integer.parseInt(hexPair, 16);
                         char[] charArray = Character.toChars(intValue);*/
@@ -245,12 +245,14 @@ public class Controller extends JFrame {
                         }
                         return null;
                     }
+
                     @Override
                     protected void process(java.util.List<String> chunks) {
                         for (String chunk : chunks) {
                             System.out.println(chunk + "\n-----------------------------------------------\n");
                         }
                     }
+
                     @Override
                     protected void done() {
                         // progressBar.setValue(100);
@@ -272,23 +274,21 @@ public class Controller extends JFrame {
     Action replace = new AbstractAction("insert and replace") {
         @Override
         public void actionPerformed(ActionEvent e) {
-
-
             JPanel panel = new JPanel(new GridLayout(4, 3));
-            JTextArea text1 = new JTextArea(2,6);
+            JTextArea text1 = new JTextArea(2, 6);
             text1.setLineWrap(true);
             text1.setTabSize(8);
             text1.setAutoscrolls(false);
             text1.setBorder(BorderFactory.createTitledBorder("текст замены"));
             PlainDocument docHex = (PlainDocument) text1.getDocument();
             docHex.setDocumentFilter(new Filter());
-            JSpinner spinnerRows=new JSpinner(new SpinnerNumberModel(0,0,table.getNumRows()-1,1));
+            JSpinner spinnerRows = new JSpinner(new SpinnerNumberModel(0, 0, table.getNumRows() - 1, 1));
             spinnerRows.setBorder(BorderFactory.createTitledBorder("ряд"));
 
-            JSpinner spinnerCols=new JSpinner(new SpinnerNumberModel(0,0,table.getNumCols()-2,1));
+            JSpinner spinnerCols = new JSpinner(new SpinnerNumberModel(0, 0, table.getNumCols() - 2, 1));
             spinnerCols.setBorder(BorderFactory.createTitledBorder("столбец"));
             JCheckBox checkBox = new JCheckBox("insert with replace or not");
-            JScrollPane scrol=new JScrollPane(text1);
+            JScrollPane scrol = new JScrollPane(text1);
 
             panel.add(checkBox);
             panel.add(spinnerCols);
@@ -301,10 +301,10 @@ public class Controller extends JFrame {
                 else System.out.println(spinnerRows.getValue());
                 System.out.println("happy new year");
                 */
-            table.replace(checkBox.isSelected(), (Integer) spinnerRows.getValue()+1, (Integer) spinnerCols.getValue()+1,text1.getText());
+            table.replace(checkBox.isSelected(), (Integer) spinnerRows.getValue() + 1, (Integer) spinnerCols.getValue() + 1, text1.getText());
         }
     };
-    Action find=new AbstractAction("find") {
+    Action find = new AbstractAction("find") {
         @Override
         public void actionPerformed(ActionEvent e) {
             System.out.println("check resize");
@@ -317,7 +317,7 @@ public class Controller extends JFrame {
             System.out.println("all clear");
         }
     };
-    Action resize=new AbstractAction("change № columns") {
+    Action resize = new AbstractAction("change № columns") {
         @Override
         public void actionPerformed(ActionEvent e) {
             System.out.println("check resize");
@@ -326,24 +326,108 @@ public class Controller extends JFrame {
             textField.setBorder(BorderFactory.createTitledBorder("количество колонок"));
             panel.add(textField);
             JOptionPane.showMessageDialog(null, panel);
-            System.out.println("change to "+Integer.parseInt(textField.getText())+" cols");
+            System.out.println("change to " + Integer.parseInt(textField.getText()) + " cols");
             table.changeNumCols(Integer.parseInt(textField.getText()));
         }
     };
-    Action delete=new AbstractAction("delete") {
+    Action delete = new AbstractAction("delete") {
         @Override
         public void actionPerformed(ActionEvent e) {
 
+            if (selection.isEmpty()) {
+                JPanel panel = new JPanel(new GridLayout(4, 3));
+                JSpinner spinnerRows = new JSpinner(new SpinnerNumberModel(0, 0, table.getNumRows() - 1, 1));
+                spinnerRows.setBorder(BorderFactory.createTitledBorder("ряд"));
+
+                JSpinner spinnerCols = new JSpinner(new SpinnerNumberModel(0, 0, table.getNumCols() - 2, 1));
+                spinnerCols.setBorder(BorderFactory.createTitledBorder("столбец"));
+
+                JSpinner spinnerBytes = new JSpinner(new SpinnerNumberModel(1, 0, table.getNumCols() * table.getNumRows() + table.getNumCols(), 1));
+                spinnerBytes.setBorder(BorderFactory.createTitledBorder("число байтов для удаления"));
+
+                JCheckBox checkBox = new JCheckBox("delete with replace or not");
+
+
+                panel.add(checkBox);
+                panel.add(spinnerCols);
+                panel.add(spinnerRows);
+                panel.add(spinnerBytes);
+
+
+                JOptionPane.showMessageDialog(null, panel);
+
+                table.delete(checkBox.isSelected(), (Integer) spinnerRows.getValue() + 1, (Integer) spinnerCols.getValue() + 1, (Integer) spinnerBytes.getValue());
+
+            } else {
+                selection.sort(Comparator.comparingInt(o -> o[0]));
+                JPanel panel = new JPanel(new GridLayout(4, 3));
+                JCheckBox checkBox = new JCheckBox("insert with replace or not");
+                panel.add(checkBox);
+                JOptionPane.showMessageDialog(null, panel);
+                System.out.println((selection.get(1)[0]-selection.get(0)[0])*table.getNumCols()+selection.get(0)[1]+selection.get(1)[1]);
+                table.delete(checkBox.isSelected(), selection.get(0)[0],  selection.get(0)[1], (selection.get(1)[0]-selection.get(0)[0])*table.getNumCols()+selection.get(0)[1]+selection.get(1)[1]);
+            }
         }
     };
-    Action copyCut=new AbstractAction("copy") {
+    Action copy = new AbstractAction("copy") {
         @Override
         public void actionPerformed(ActionEvent e) {
-            StringSelection selection = new StringSelection(table.copyCut());
+            System.out.println("copy");
+            StringBuilder str = new StringBuilder();
+            if (selection.get(0)[0].equals(selection.get(1)[0]))selection.sort(Comparator.comparingInt(o -> o[1]));
+            else selection.sort(Comparator.comparingInt(o -> o[0]));
+            System.out.println(selection.get(0)[0] + "" + selection.get(0)[1] + "" + selection.get(1)[0] + "" + selection.get(1)[1]);
+            int r = selection.get(0)[0], c = selection.get(0)[1];
+//            for (int i = selection.get(0)[0]; i < selection.get(1)[0]; i++) {
+//                for (int j = 0; j < selection.get(1)[1] - 1; j++) {//додумать логику как от одной ячейки до другой пройтись
+            while (r * table.getNumRows() + c != selection.get(1)[0] * table.getNumRows() + selection.get(1)[1] + 1) {
+                if (c > table.getColumnCount() - 1) {
+                    r++;
+                    c = 1;
+                }
+                System.out.println("r" + (r - 1) + "c" + (c - 1));
+                str.append(table.getValueAt(r, c));
+                c++;
+                //}
+            }
+            StringSelection select = new StringSelection(str.toString());
             Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-            clipboard.setContents(selection, selection);
+            clipboard.setContents(select, select);
+            selection.clear();
         }
     };
+    Action cut = new AbstractAction("cut") {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            System.out.println("Cut");
+            StringBuilder str = new StringBuilder();
+
+            if (selection.get(0)[0].equals(selection.get(1)[0]))selection.sort(Comparator.comparingInt(o -> o[1]));
+            else selection.sort(Comparator.comparingInt(o -> o[0]));
+            System.out.println(selection.get(0)[0] + "" + selection.get(0)[1] + "" + selection.get(1)[0] + "" + selection.get(1)[1]);
+            int r = selection.get(0)[0], c = selection.get(0)[1];
+//            for (int i = selection.get(0)[0]; i < selection.get(1)[0]; i++) {
+//                for (int j = 0; j < selection.get(1)[1] - 1; j++) {//додумать логику как от одной ячейки до другой пройтись
+            while (r * table.getNumRows() + c != selection.get(1)[0] * table.getNumRows() + selection.get(1)[1] + 1) {
+                if (c > table.getColumnCount() - 1) {
+                    r++;
+                    c = 1;
+                }
+                System.out.println("r" + (r - 1) + "c" + (c - 1));
+                str.append(table.getValueAt(r, c));
+                c++;
+                //}
+            }
+            StringSelection select = new StringSelection(str.toString());
+            int num=selection.get(1)[0]*(table.getNumCols()-1)+selection.get(1)[1]-selection.get(0)[0]*(table.getNumCols()-1)+selection.get(0)[1]-1;
+            System.out.println("num "+num);
+            table.delete(false, selection.get(0)[0],  selection.get(0)[1],num);
+            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+            clipboard.setContents(select, select);
+            selection.clear();
+        }
+    };
+
     private void openFile(String fileName) throws IOException {//надо вынести в отдельный файл по работе с файлами
         FileReader fr;
         try {
