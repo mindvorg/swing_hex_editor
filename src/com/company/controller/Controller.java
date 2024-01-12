@@ -8,6 +8,8 @@ import com.company.gigachatTable.MyJTable;
 import com.company.listeners.MouseMarkListener;
 import com.company.listeners.TextListener;
 
+import static java.nio.charset.StandardCharsets.*;
+
 
 import javax.swing.*;
 import javax.swing.text.*;
@@ -15,15 +17,13 @@ import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
+import java.util.*;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class Controller extends JFrame {
 
@@ -35,19 +35,28 @@ public class Controller extends JFrame {
     private int levelScrollBar = 0;
     private final JTextArea numCols = new JTextArea(0, 3);
     private int caretPos = 0;
+    private File tempFile;
+    {
+        try {
+            tempFile = File.createTempFile("hello", ".tmp");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-    private JPanel panel = new JPanel();
-    private JTextArea textArea_normal = new JTextArea(6, /*8*/25);
-    private JTextArea textArea_hex = new JTextArea(6, /*12*/25);
-    private MyJTable table = new MyJTable();
+    private JPanel panel = new JPanel(new BorderLayout(3,3));
+//    private JTextArea textArea_normal = new JTextArea(6, /*8*/25);
+//    private JTextArea textArea_hex = new JTextArea(6, /*12*/25);
+    private MyJTable table = new MyJTable(tempFile);
     private JFileChooser fc = new JFileChooser();
-    private JScrollPane scroll = new JScrollPane(panel);
+    JPanel panelTable=new JPanel();
+    private JScrollPane scroll = new JScrollPane(panelTable);
     private ArrayList<Integer[]> selection = new ArrayList<>();
-
     private JMenu file = new JMenu("File");
     private JMenu utils = new JMenu("utils");
+    private JMenu view = new JMenu("view");
     private JMenuBar menu = new JMenuBar();
-    private TextListener text = new TextListener(textArea_normal, textArea_hex, numCols);
+//    private TextListener text = new TextListener(textArea_normal, textArea_hex, numCols);
 
 
     public Controller() throws HeadlessException {
@@ -55,14 +64,19 @@ public class Controller extends JFrame {
         super("Name");
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         this.setBounds(screenSize.width / 2 - 400, screenSize.height / 2 - 200, 800, 400);
-        textArea_normal.setLineWrap(true);
-        textArea_hex.setLineWrap(true);
-        textArea_hex.setBorder(BorderFactory.createTitledBorder("hex"));
-        textArea_normal.setBorder(BorderFactory.createTitledBorder("normal"));
+//        textArea_normal.setLineWrap(true);
+//        textArea_hex.setLineWrap(true);
+//        textArea_hex.setBorder(BorderFactory.createTitledBorder("hex"));
+//        textArea_normal.setBorder(BorderFactory.createTitledBorder("normal"));
         //menu
 /**
  * русское поле экспериментов
  * */
+        //Charset charset = Charset.forName("windows-1251");
+
+//
+//        System.out.println(Character.toChars(Integer.parseInt("43f", 16)));
+//        System.out.println(Character.toChars(Integer.parseInt("435", 16)));
 
 
 //        //scroll.putClientProperty("autoscrolls",false);
@@ -74,7 +88,7 @@ public class Controller extends JFrame {
         numCols.setEditable(false);
 
         panel.setAutoscrolls(false);
-        textArea_hex.setTabSize(8);
+//        textArea_hex.setTabSize(8);
 
 
         MouseListener listener = new MouseAdapter() {
@@ -93,81 +107,100 @@ public class Controller extends JFrame {
                 System.out.println("new marked");
                 int row = table.rowAtPoint(e.getPoint());
                 int col = table.columnAtPoint(e.getPoint());
-                if (selection.get(0)[0] != row || selection.get(0)[1] != col) {
-                    if (row != -1 && col != -1) {
-                        selection.add(new Integer[]{row, col});
-                    }
-                    for (Integer[] elem :
-                            selection) {
-                        System.out.println(Arrays.toString(elem));
-                    }
-                    //     table.mark(selection);
-                    table.clearSelection();
+                //    if (selection.get(0)[0] != row || selection.get(0)[1] != col) {
+                if (row != -1 && col != -1) {
+                    selection.add(new Integer[]{row, col});
                 }
+                if (selection.get(0)[0].equals(selection.get(1)[0])) selection.sort(Comparator.comparingInt(o -> o[1]));
+                else selection.sort(Comparator.comparingInt(o -> o[0]));
+                for (Integer[] elem :
+                        selection) {
+                    System.out.println(Arrays.toString(elem));
+                }
+                //     table.mark(selection);
+                //        if (!(selection.get(0)[0] == row && selection.get(0)[1] == col))
+                if ((selection.get(0)[0] != selection.get(1)[0] || selection.get(0)[1] != selection.get(1)[1])) table.clearSelection();
+
+
+
             }
         };
         table.addMouseListener(listener);
         // table.setSelectionMode(1);
 
-        panel.add(table);
-//        Model model=new Model(3,3);
-//        JTable videoTable=new JTable(model);
-//        for (int i = 0; i < videoTable.getRowCount(); i++) {
-//            //for (int j = 0; j < videoTable.getRowCount(); j++) {
-//                videoTable.getColumnModel().getColumn(i).setCellEditor(new DefaultCellEditor(new JTextField()));
-//            //}
-//
-//        }
-//
-//        videoTable.setCellSelectionEnabled(true);
-//        videoTable.setDefaultEditor(Object.class,new DefaultCellEditor(new JTextField()));
+        //panel.add(table);
+        panelTable.add(table);
+//        JScrollPane scrollPane=new JScrollPane(table,JScrollPane.VERTICAL_SCROLLBAR_NEVER,JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+//        Dimension d=table.getPreferredSize();
+//        scrollPane.setPreferredSize(new Dimension(d.width,table.getRowHeight()*rows));
+//        JPanel navigation= new JPanel(new FlowLayout(FlowLayout.CENTER));
+        JButton next=new JButton("↑");
+        next.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+            table.moveNext();
+            }
+        });
+        JButton prev=new JButton("↓");
+        prev.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                table.movePrev();
+            }
+        });
+        JPanel panelButtons=new JPanel();
+        panelButtons.add(prev);
+        panelButtons.add(next);
 
+        panel.add(scroll,BorderLayout.CENTER);
+        panel.add(panelButtons, BorderLayout.SOUTH);
 
 //        panel.add(videoTable);
 //        panel.add(textArea_hex);
         //panel.add(textArea_normal);
 
 
-        text.sync();
+//        text.sync();
         // text.syncToHex();
         //    text.syncToNorm();
 
 
-        MouseMarkListener marks = new MouseMarkListener(textArea_normal, textArea_hex);
-        marks.sync();
-
-
-        PlainDocument docHex = (PlainDocument) textArea_hex.getDocument();
-        docHex.setDocumentFilter(new HexFilter());
-        PlainDocument docNorm = (PlainDocument) textArea_normal.getDocument();
-        docNorm.setDocumentFilter(new NormFilter());
+//        MouseMarkListener marks = new MouseMarkListener(textArea_normal, textArea_hex);
+//        marks.sync();
+//
+//
+//        PlainDocument docHex = (PlainDocument) textArea_hex.getDocument();
+//        docHex.setDocumentFilter(new HexFilter());
+//        PlainDocument docNorm = (PlainDocument) textArea_normal.getDocument();
+//        docNorm.setDocumentFilter(new NormFilter());
 //        ((AbstractDocument) textArea_hex.getDocument()).setDocumentFilter(new Filter());
 
 
         //граница опасной зоны!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        add(scroll);
+        add(panel);
         setJMenuBar(menu);
         menu.add(file);
         menu.add(utils);
+        menu.add(view);
         file.add(open);
-        file.add(save);
-        //file.add(replace);
-        utils.add(resize);
-        utils.add(find);
-        utils.add(replace);
+     //   file.add(save);
+        view.add(viewData);
+        view.add(resize);
         utils.add(copy);
         utils.add(cut);
+        utils.add(replace);
         utils.add(delete);
+        utils.add(find);
 
         // utils.addSeparator();
         file.addSeparator();
 
-
+        tempFile.deleteOnExit();
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
 
 
-    private static JTextArea createLimitedTextArea(int maxLength) {
+    private static JTextArea    createLimitedTextArea(int maxLength) {
         JTextArea textArea = new JTextArea(5, 20);
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
@@ -221,56 +254,90 @@ public class Controller extends JFrame {
                 }
             }*/
             if (fc.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-                final SwingWorker<Void, String> worker = new SwingWorker<>() {
-                    @Override
-                    protected Void doInBackground() throws Exception {
-                        try (BufferedReader reader = new BufferedReader(new FileReader(fc.getSelectedFile()))) {
-                            long fileSize = fc.getSelectedFile().length();
-                            long bytesRead = 0;
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                bytesRead += line.length();
-                                StringBuilder str = new StringBuilder();
-                                /*
-                        int intValue = Integer.parseInt(hexPair, 16);
-                        char[] charArray = Character.toChars(intValue);*/
-                                for (int i = 0; i < line.length(); i++) {
-                                    str.append(Integer.toHexString(line.charAt(i)));
-                                }
-                                publish(String.valueOf(str));  // Опубликовать текущую строку
-                                setProgress((int) ((bytesRead * 100) / fileSize));
-                            }
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                        return null;
-                    }
-
-                    @Override
-                    protected void process(java.util.List<String> chunks) {
-                        for (String chunk : chunks) {
-                            System.out.println(chunk + "\n-----------------------------------------------\n");
-                        }
-                    }
-
-                    @Override
-                    protected void done() {
-                        // progressBar.setValue(100);
-                        //  JOptionPane.showMessageDialog(LargeFileReaderApp.this, "File loaded successfully!");
-                        System.out.println("done");
-                    }
-                };
-
-                worker.execute();
+                table.loadData(fc.getSelectedFile());
+                //                final SwingWorker<ArrayList<ArrayList<String>>, String> worker = new SwingWorker<>() {
+//                    public final StringBuilder str = new StringBuilder();
+//                    public final ArrayList<ArrayList<String>> data = new ArrayList<>();
+//
+//                    @Override
+//                    protected ArrayList<ArrayList<String>> doInBackground() throws Exception {
+//                        try (BufferedReader reader = new BufferedReader(new FileReader(fc.getSelectedFile()))) {
+//                            long fileSize = fc.getSelectedFile().length();
+//                            long bytesRead = 0;
+//                            String line;
+//                            ArrayList<String> tmp = new ArrayList<>();
+//                            for (int i = 0; i < 5; i++) {
+//                                tmp.add((Integer.toHexString(i - 1)));
+//                            }
+//                            tmp.set(0, "");
+//                            data.add(tmp);
+//                            tmp = new ArrayList<>();
+//                            tmp.add("0");
+//                            while ((line = reader.readLine()) != null) {
+//                                bytesRead += line.length();
+//                                for (int i = 0; i < line.length(); i++) {
+//                              //      System.out.print(line.charAt(i));
+//                                    tmp.add(Integer.toHexString(line.charAt(i)));
+//                                    if (tmp.size() == 5) {
+//                                        data.add(tmp);
+//                                        tmp = new ArrayList<>();
+//                                        tmp.add(Integer.toHexString(data.size() - 1));
+//                                    }
+//                                }
+//                           //     System.out.println();
+//                           //     publish(String.valueOf(str));  // Опубликовать текущую строку
+//                                setProgress((int) ((bytesRead * 100) / fileSize));
+//                            }
+//                            while(tmp.size()!=5)
+//                            {
+//                                tmp.add("");
+//                            }
+//                            data.add(tmp);
+//
+//                        } catch (IOException e) {
+//                            e.printStackTrace();
+//                        }
+//                        return data;
+//
+//
+//                    }
+//
+//                    @Override
+//                    protected void process(java.util.List<String> chunks) {
+//
+//                    }
+//
+//                    @Override
+//                    protected void done() {
+//                        // progressBar.setValue(100);
+//                        //  JOptionPane.showMessageDialog(LargeFileReaderApp.this, "File loaded successfully!");
+//                        System.out.println("done");
+//                    }
+//                };
+//
+//                worker.execute();
+//                try {
+////                    System.out.println("proverka swingworker");
+////                    ArrayList<ArrayList<String>> result = worker.get();
+////                    for (ArrayList<String> elem : result) {
+////                        for (String str : elem) {
+////                            System.out.print(str+" ");
+////                        }
+////                        System.out.println();
+////                    }
+//                    table.updateData(worker.get());
+//                } catch (InterruptedException | ExecutionException ex) {
+//                    ex.printStackTrace();
+//                }
             }
         }
     };
-    Action save = new AbstractAction("Save") {
+/*    Action save = new AbstractAction("Save") {
         @Override
         public void actionPerformed(ActionEvent e) {
             saveFile();
         }
-    };
+    };*/
     Action replace = new AbstractAction("insert and replace") {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -293,7 +360,7 @@ public class Controller extends JFrame {
             panel.add(checkBox);
             panel.add(spinnerCols);
             panel.add(spinnerRows);
-            panel.add(scrol);
+            //panel.add(scrol);
 
             JOptionPane.showMessageDialog(null, panel);
                 /*if (checkBox.isSelected())
@@ -359,13 +426,14 @@ public class Controller extends JFrame {
                 table.delete(checkBox.isSelected(), (Integer) spinnerRows.getValue() + 1, (Integer) spinnerCols.getValue() + 1, (Integer) spinnerBytes.getValue());
 
             } else {
-                selection.sort(Comparator.comparingInt(o -> o[0]));
                 JPanel panel = new JPanel(new GridLayout(4, 3));
                 JCheckBox checkBox = new JCheckBox("insert with replace or not");
                 panel.add(checkBox);
                 JOptionPane.showMessageDialog(null, panel);
-                System.out.println((selection.get(1)[0]-selection.get(0)[0])*table.getNumCols()+selection.get(0)[1]+selection.get(1)[1]);
-                table.delete(checkBox.isSelected(), selection.get(0)[0],  selection.get(0)[1], (selection.get(1)[0]-selection.get(0)[0])*table.getNumCols()+selection.get(0)[1]+selection.get(1)[1]);
+                int num = selection.get(1)[0] * (table.getNumCols() - 1) + selection.get(1)[1] - selection.get(0)[0] * (table.getNumCols() - 1) - selection.get(0)[1] + 1;
+                //num=(selection.get(1)[0]-selection.get(0)[0]+1)*(selection.get(1)[1]-selection.get(0)[1]+1);
+                System.out.println("num " + num);
+                table.delete(checkBox.isSelected(), selection.get(0)[0], selection.get(0)[1], num);
             }
         }
     };
@@ -374,8 +442,7 @@ public class Controller extends JFrame {
         public void actionPerformed(ActionEvent e) {
             System.out.println("copy");
             StringBuilder str = new StringBuilder();
-            if (selection.get(0)[0].equals(selection.get(1)[0]))selection.sort(Comparator.comparingInt(o -> o[1]));
-            else selection.sort(Comparator.comparingInt(o -> o[0]));
+
             System.out.println(selection.get(0)[0] + "" + selection.get(0)[1] + "" + selection.get(1)[0] + "" + selection.get(1)[1]);
             int r = selection.get(0)[0], c = selection.get(0)[1];
 //            for (int i = selection.get(0)[0]; i < selection.get(1)[0]; i++) {
@@ -402,7 +469,7 @@ public class Controller extends JFrame {
             System.out.println("Cut");
             StringBuilder str = new StringBuilder();
 
-            if (selection.get(0)[0].equals(selection.get(1)[0]))selection.sort(Comparator.comparingInt(o -> o[1]));
+            if (selection.get(0)[0].equals(selection.get(1)[0])) selection.sort(Comparator.comparingInt(o -> o[1]));
             else selection.sort(Comparator.comparingInt(o -> o[0]));
             System.out.println(selection.get(0)[0] + "" + selection.get(0)[1] + "" + selection.get(1)[0] + "" + selection.get(1)[1]);
             int r = selection.get(0)[0], c = selection.get(0)[1];
@@ -419,15 +486,49 @@ public class Controller extends JFrame {
                 //}
             }
             StringSelection select = new StringSelection(str.toString());
-            int num=selection.get(1)[0]*(table.getNumCols()-1)+selection.get(1)[1]-selection.get(0)[0]*(table.getNumCols()-1)+selection.get(0)[1]-1;
-            System.out.println("num "+num);
-            table.delete(false, selection.get(0)[0],  selection.get(0)[1],num);
+            int num = selection.get(1)[0] * (table.getNumCols() - 1) + selection.get(1)[1] - selection.get(0)[0] * (table.getNumCols() - 1) - selection.get(0)[1] + 1;
+            //num=(selection.get(1)[0]-selection.get(0)[0]+1)*(selection.get(1)[1]-selection.get(0)[1]+1);
+            System.out.println("num " + num);
+            table.delete(false, selection.get(0)[0], selection.get(0)[1], num);
             Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
             clipboard.setContents(select, select);
             selection.clear();
         }
     };
+    Action viewData=new AbstractAction("view selected Data") {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (selection.isEmpty())
+            {
+                JOptionPane.showMessageDialog(null, "please, select data first");
+            }
+            else
+            {
+                StringBuilder dec=new StringBuilder();
+                StringBuilder hex=new StringBuilder();
+                StringBuilder bin =new StringBuilder();
+                int r = selection.get(0)[0], c = selection.get(0)[1];
+                while (r * table.getNumRows() + c != selection.get(1)[0] * table.getNumRows() + selection.get(1)[1] + 1) {
+                    if (c > table.getColumnCount() - 1) {
+                        r++;
+                        c = 1;
+                    }
+                    StringBuilder tmp = new StringBuilder(table.getValueAt(r, c).toString());
+                    while (tmp.length() < 2) {
+                        tmp.insert(0, "0");
+                    }
+                    int intValue = Integer.parseInt(String.valueOf(tmp), 16);
+                    dec.append( Character.toChars(intValue));
+                    hex.append(tmp);
+                    bin.append(Integer.toBinaryString(intValue));
+                    c++;
+                }
+                JOptionPane.showMessageDialog(null,"decimal: "+dec+"\nhex: "+hex+"\nbinary: "+bin);
+            }
+        }
+    };
 
+/*
     private void openFile(String fileName) throws IOException {//надо вынести в отдельный файл по работе с файлами
         FileReader fr;
         try {
@@ -450,8 +551,9 @@ public class Controller extends JFrame {
             e.printStackTrace();
         }
     }
+*/
 
-    private void saveFile() {
+/*    private void saveFile() {
         if (fc.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
             FileWriter fw;
             try {
@@ -462,7 +564,7 @@ public class Controller extends JFrame {
                 e.printStackTrace();
             }
         }
-    }
+    }*/
    /* class LimitedCellEditor extends DefaultCellEditor{
         private JTextField textField;
         public LimitedCellEditor(){

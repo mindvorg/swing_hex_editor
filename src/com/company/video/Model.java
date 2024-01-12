@@ -1,15 +1,26 @@
 package com.company.video;
 
+import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.lang.reflect.Array;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class Model extends AbstractTableModel {
     private int numCol = 8, numRow = 8;
-    private ArrayList<ArrayList<String>> data = new ArrayList<>();
+    private int counterPages=0;
+
+    //private ArrayList<ArrayList<String>> data = new ArrayList<>();
+    private ArrayList<ArrayList<Byte>> data = new ArrayList<>();
+
     public Model(int numCol, int numRow) {
         this.numCol = numCol + 1;
         this.numRow = numRow + 1;
@@ -21,20 +32,25 @@ public class Model extends AbstractTableModel {
             System.out.println();
             for (int j = 0; j < this.numCol; j++) {
                 int tmp = i * numRow + j - 1 - numRow;
-                data.get(i).add(String.valueOf(tmp));
+                data.get(i).add((byte) tmp);
             }
         }
+        data.get(0).set(0, (byte) 0);
         for (int i = 1; i < this.numRow; i++) {
-            data.get(i).set(0, Integer.toHexString(i - 1));
+            //data.get(i).set(0, Integer.toHexString(i - 1));
+            data.get(i).set(0, (byte) (16*counterPages+(i-1)));
         }
         for (int i = 1; i < this.numCol; i++) {
-            data.get(0).set(i, Integer.toHexString(i - 1));
+            //data.get(0).set(i, Integer.toHexString(i - 1));
+            data.get(0).set(i, (byte)(i - 1));
         }
+        //System.out.println(output());
+    }
 
-
-
-
-
+    public Model(ArrayList<ArrayList<Byte>> input) {
+        data = input;
+        numCol = input.get(0).size();
+        numRow = input.size();
         //System.out.println(output());
     }
 
@@ -57,15 +73,26 @@ public class Model extends AbstractTableModel {
 
     }
 
+    public ArrayList<ArrayList<Byte>> getData() {
+        return data;
+    }
+
+    public void setData(ArrayList<ArrayList<Byte>> data) {
+        this.data = data;
+    }
+
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
         //System.out.println("want to get" + rowIndex + " " + columnIndex);
-        return data.get(rowIndex).get(columnIndex);
+        return String.format("%02X",data.get(rowIndex).get(columnIndex));
     }
 
     @Override
     public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
-        data.get(rowIndex).set(columnIndex, (String) aValue);
+        //data.get(rowIndex).set(columnIndex, (String) aValue);
+        if(aValue.toString().isEmpty())
+            aValue="0";
+        data.get(rowIndex).set(columnIndex, (byte) Integer.parseInt((String) aValue,16));
         System.out.println("r:" + rowIndex + "col:" + columnIndex + "aVal:" + aValue.toString());
         fireTableCellUpdated(rowIndex, columnIndex);
     }
@@ -73,6 +100,7 @@ public class Model extends AbstractTableModel {
     @Override
     public String toString() {
         return "Model{" +
+                "counter"+counterPages+
                 "numCol=" + numCol +
                 ", numRow=" + numRow +
                 ", data=" + output() +
@@ -91,16 +119,18 @@ public class Model extends AbstractTableModel {
 
     public void addRow() {
         numRow++;
-        ArrayList<String> tmp = new ArrayList<>();
-        tmp.add(Integer.toHexString(numRow - 2));
+        //ArrayList<String> tmp = new ArrayList<>();
+        ArrayList<Byte> tmp = new ArrayList<>();
+        tmp.add((byte)(16*counterPages+numRow - 2));
         for (int j = 1; j < numCol; j++) {
-            tmp.add("");
+            tmp.add((byte) 0);
         }
         //        tmp.set(0,Integer.toHexString(numRow));
         System.out.println("add row");
         data.add(tmp);
     }
 
+/*
     public void resize(int newNumCol) {
         ++newNumCol;
         ArrayList<ArrayList<String>> newData = new ArrayList<>();
@@ -142,7 +172,9 @@ public class Model extends AbstractTableModel {
         clearData();
         fixAfterClear();
     }
+*/
 
+/*
     private void clearData() {
         for (int i = numRow - 1; i > 1; i--) {
             boolean flag = false;
@@ -167,7 +199,9 @@ public class Model extends AbstractTableModel {
             }
         }
     }
+*/
 
+/*
     private void fixAfterClear() {
         if (!data.get(numRow - 1).get(numCol - 1).isEmpty()) {
             System.out.println("add");
@@ -182,7 +216,9 @@ public class Model extends AbstractTableModel {
             data.get(0).set(i, Integer.toHexString(i - 1));
         }
     }
+*/
 
+/*
     public Integer[] findInData(String text) {
         ArrayList<String> findData = new ArrayList<>();
         if (text.length() >= 2) {
@@ -198,25 +234,30 @@ public class Model extends AbstractTableModel {
         for (int i = 1; i < numRow; i++) {
             ArrayList<String> tmp = new ArrayList<>(data.get(i));
             tmp.remove(0);
+            for (int j = 0; j < tmp.size(); j++) {
+                if (tmp.get(j).length() == 1) tmp.set(j, "0" + tmp.get(j));
+            }
             existData.addAll(tmp);
 //            System.out.println(tmp);
 //            System.out.println(data.get(i));
         }
-   //     System.out.println(existData);
+        //     System.out.println(existData);
         //System.out.println(data.stream().anyMatch(l-> Collections.indexOfSubList(l,findData)!=-1));
         int index = Collections.indexOfSubList(existData, findData);
-        System.out.println(index + "cords: " + "row" + ((index / (numCol-1)) + 1) + "col: " + (index % (numCol - 1) + 1));
-        return new Integer[]{(index / (numCol-1)) + 1, (index % (numCol - 1) + 1)};
+        System.out.println(index + "cords: " + "row" + ((index / (numCol - 1)) + 1) + "col: " + (index % (numCol - 1) + 1));
+        return new Integer[]{(index / (numCol - 1)) + 1, (index % (numCol - 1) + 1)};
     }
+*/
 
-    public void insertWithShift(ArrayList<String> insertData,int row, int col){
+/*
+    public void insertWithShift(ArrayList<String> insertData, int row, int col) {
         ArrayList<String> existData = new ArrayList<>();
         for (int i = row; i < numRow; i++) {
             ArrayList<String> tmp = new ArrayList<>(data.get(i));
             tmp.remove(0);
             existData.addAll(tmp);
         }
-        for (int i = 0; i < col-1; i++) {
+        for (int i = 0; i < col - 1; i++) {
             existData.remove(0);
         }
         System.out.println("check");
@@ -224,10 +265,10 @@ public class Model extends AbstractTableModel {
             if (col > numCol - 1) {
                 row++;
                 if (row > getRowCount() - 1)
-                addRow();
+                    addRow();
                 col = 1;
             }
-            data.get(row).set( col,replaceDatum);
+            data.get(row).set(col, replaceDatum);
             col++;
         }
         for (String replaceDatum : existData) {//обновляю ячейки прошлой data на новую insertData далее надо вставить следом изначальную existData
@@ -237,9 +278,163 @@ public class Model extends AbstractTableModel {
                     addRow();
                 col = 1;
             }
-            data.get(row).set( col,replaceDatum);
+            data.get(row).set(col, replaceDatum);
             col++;
         }
 
+    }
+*/
+
+    public void deleteWithShift(Integer numBytes, int row, int col) {
+//        ArrayList<String> existData = new ArrayList<>();
+        ArrayList<Byte> existData = new ArrayList<>();
+        for (int i = row; i < numRow; i++) {
+//            ArrayList<String> tmp = new ArrayList<>(data.get(i));
+//            data.get(i).replaceAll(e -> "");
+//            data.get(i).set(0, String.valueOf(i - 1));
+            ArrayList<Byte> tmp=new ArrayList<>(data.get(i));
+            tmp.remove(0);
+            existData.addAll(tmp);
+        }
+        System.out.println("check");
+        for (int i = 0; i < numBytes; i++) {
+            existData.remove(col - 1);
+        }
+//        for (int i = 0; i < numBytes; i++) {
+//            existData.remove(0);
+//        }
+        System.out.println("check");
+        //   for (String replaceDatum : insertData) {//обновляю ячейки прошлой data на новую insertData далее надо вставить следом изначальную existData
+//            while(row*numCol+col!=numBytes){//обновляю ячейки прошлой data на новую insertData далее надо вставить следом изначальную existData
+//                if (col > numCol - 1) {
+//                row++;
+//                if (row > getRowCount() - 1)
+//                    addRow();
+//                col = 1;
+//            }
+//            data.get(row).set( col,"");
+//            col++;
+//        }
+        col = 1;
+        for (Byte replaceDatum : existData) {//обновляю ячейки прошлой data на новую insertData далее надо вставить следом изначальную existData
+            if (col > numCol - 1) {
+                row++;
+                if (row > getRowCount() - 1)
+                    addRow();
+                col = 1;
+            }
+            data.get(row).set(col, replaceDatum);
+            col++;
+        }
+
+    }
+
+
+    public void loadData(File file) {
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                data.clear();
+                //ArrayList<String> tmp = new ArrayList<>();
+                ArrayList<Byte> tmp = new ArrayList<>();
+                for (int i = 0; i < numCol; i++) {
+                    //tmp.add((Integer.toHexString(i - 1)));
+                    tmp.add((byte)(i - 1));
+                }
+                tmp.set(0, (byte) 0);
+                data.add(tmp);
+                numRow++;
+                tmp = new ArrayList<>();
+                tmp.add((byte) 0);
+                try {
+                    FileReader fr = new FileReader(file, StandardCharsets.UTF_8);
+                    BufferedReader br = new BufferedReader(fr);
+//                    String line;
+//                    while ((line = br.readLine()) != null) {
+//                        for (int i = 0; i < line.length(); i++) {
+//                            tmp.add(Integer.toHexString(line.charAt(i)));
+//                            if (tmp.size() == numCol) {
+//                                data.add(tmp);
+//                                numRow++;
+//                                //fireTableDataChanged(); // Обновление данных в таблице
+//                                fireTableRowsInserted(numRow,numRow);
+//                                tmp = new ArrayList<>();
+//                                tmp.add(Integer.toHexString(data.size() - 1));
+//                            }
+//                        }
+//                    }
+                    System.out.println("bef while");
+                    int byteRead;
+                    while((byteRead=br.read())!=-1){
+                        tmp.add((byte) byteRead);
+                        System.out.println(tmp.toString());
+                            if (tmp.size() == numCol) {
+                                data.add(tmp);
+                                numRow++;
+                                //fireTableDataChanged(); // Обновление данных в таблице
+                                fireTableRowsInserted(numRow,numRow);
+                                tmp = new ArrayList<>();
+                                tmp.add((byte)(data.size() - 1));
+                    }
+                    br.close();
+                    fr.close();
+                }
+                }catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                while (tmp.size() != numCol) {
+                    tmp.add((byte) 0);
+                }
+                data.add(tmp);
+                output();
+                return null;
+            }
+
+            @Override
+            protected void done() {
+
+                numRow=data.size();
+                fireTableDataChanged(); // Обновление данных в таблице
+                System.out.println("done");
+            }
+
+            @Override
+            protected void process(List<Void> chunks) {
+                super.process(chunks);
+            }
+        };
+
+        worker.execute();
+    }
+
+    public ArrayList<Byte> getRow(int i) {
+        return data.get(i);
+    }
+    public void clear(){
+        data.clear();
+        for (int i = 0; i < 2; i++) {
+            data.add(new ArrayList<>());
+            System.out.println();
+            for (int j = 0; j < this.numCol; j++) {
+                data.get(i).add((byte) 0);
+            }
+        }
+        data.get(0).set(0, (byte) 0);
+            //data.get(i).set(0, Integer.toHexString(i - 1));
+            data.get(1).set(0, (byte) (counterPages*16));
+
+        for (int i = 1; i < this.numCol; i++) {
+            //data.get(0).set(i, Integer.toHexString(i - 1));
+            data.get(0).set(i, (byte)(i - 1));
+        }
+        numRow=2;
+
+    }
+    public void counterPlus(){
+        counterPages++;
+    }
+    public void counterMinus(){
+        counterPages--;
     }
 }
