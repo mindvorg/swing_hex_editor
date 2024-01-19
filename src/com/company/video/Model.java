@@ -25,26 +25,34 @@ public class Model extends AbstractTableModel {
         this.numCol = numCol + 1;
         this.numRow = numRow + 1;
 
-        System.out.println(numCol + numRow);
+        System.out.println("col"+this.numCol+"row"+this.numRow);
 
         for (int i = 0; i < this.numRow; i++) {
             data.add(new ArrayList<>());
             System.out.println();
+            data.get(i).add((byte) (16*counterPages+(i-1)));
             for (int j = 0; j < this.numCol; j++) {
-                int tmp = i * numRow + j - 1 - numRow;
-                data.get(i).add((byte) tmp);
+                data.get(i).add((byte) 0);
             }
         }
         data.get(0).set(0, (byte) 0);
-        for (int i = 1; i < this.numRow; i++) {
-            //data.get(i).set(0, Integer.toHexString(i - 1));
-            data.get(i).set(0, (byte) (16*counterPages+(i-1)));
-        }
         for (int i = 1; i < this.numCol; i++) {
             //data.get(0).set(i, Integer.toHexString(i - 1));
             data.get(0).set(i, (byte)(i - 1));
         }
-        //System.out.println(output());
+
+
+
+
+        for (int i = 1; i < this.numRow; i++) {
+            for (int j = 1; j < this.numCol; j++) {
+                data.get(i).set(j,(byte)(65+(i-1)*(this.numCol-1)+j));
+            }
+        }
+
+
+
+
     }
 
     public Model(ArrayList<ArrayList<Byte>> input) {
@@ -74,11 +82,18 @@ public class Model extends AbstractTableModel {
     }
 
     public ArrayList<ArrayList<Byte>> getData() {
-        return data;
+        ArrayList<ArrayList<Byte>> tmp=new ArrayList<ArrayList<Byte>>(data);
+        tmp.remove(0);
+        return tmp;
     }
 
     public void setData(ArrayList<ArrayList<Byte>> data) {
         this.data = data;
+        this.numRow=data.size();
+        for (int i = 0; i < this.numRow; i++) {
+            data.get(i).add((byte) (16*counterPages+(i-1)));
+        }
+        numRow=data.size();
     }
 
     @Override
@@ -93,7 +108,7 @@ public class Model extends AbstractTableModel {
         if(aValue.toString().isEmpty())
             aValue="0";
         data.get(rowIndex).set(columnIndex, (byte) Integer.parseInt((String) aValue,16));
-        System.out.println("r:" + rowIndex + "col:" + columnIndex + "aVal:" + aValue.toString());
+//        System.out.println("r:" + rowIndex + "col:" + columnIndex + "aVal:" + aValue.toString());
         fireTableCellUpdated(rowIndex, columnIndex);
     }
 
@@ -130,10 +145,11 @@ public class Model extends AbstractTableModel {
         data.add(tmp);
     }
 
-/*
+
     public void resize(int newNumCol) {
         ++newNumCol;
-        ArrayList<ArrayList<String>> newData = new ArrayList<>();
+        this.numCol=newNumCol;
+        /*ArrayList<ArrayList<String>> newData = new ArrayList<>();
         ArrayList<String> newCol = new ArrayList<>();
         newCol.add("");
         for (int i = 1; i < newNumCol; i++) {
@@ -170,9 +186,9 @@ public class Model extends AbstractTableModel {
         numRow = data.size();
         System.out.println("clear");
         clearData();
-        fixAfterClear();
+        fixAfterClear();*/
     }
-*/
+
 
 /*
     private void clearData() {
@@ -423,7 +439,6 @@ public class Model extends AbstractTableModel {
         data.get(0).set(0, (byte) 0);
             //data.get(i).set(0, Integer.toHexString(i - 1));
             data.get(1).set(0, (byte) (counterPages*16));
-
         for (int i = 1; i < this.numCol; i++) {
             //data.get(0).set(i, Integer.toHexString(i - 1));
             data.get(0).set(i, (byte)(i - 1));

@@ -1,14 +1,8 @@
 package com.company.controller;
 
 import com.company.converter.Filter;
-import com.company.converter.HexFilter;
-import com.company.converter.NormFilter;
 
 import com.company.gigachatTable.MyJTable;
-import com.company.listeners.MouseMarkListener;
-import com.company.listeners.TextListener;
-
-import static java.nio.charset.StandardCharsets.*;
 
 
 import javax.swing.*;
@@ -18,12 +12,9 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
 import java.io.*;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 public class Controller extends JFrame {
 
@@ -36,6 +27,7 @@ public class Controller extends JFrame {
     private final JTextArea numCols = new JTextArea(0, 3);
     private int caretPos = 0;
     private File tempFile;
+
     {
         try {
             tempFile = File.createTempFile("hello", ".tmp");
@@ -44,12 +36,14 @@ public class Controller extends JFrame {
         }
     }
 
-    private JPanel panel = new JPanel(new BorderLayout(3,3));
-//    private JTextArea textArea_normal = new JTextArea(6, /*8*/25);
+    private RandomAccessFile raf;
+
+    private JPanel panel = new JPanel(new BorderLayout(3, 3));
+    //    private JTextArea textArea_normal = new JTextArea(6, /*8*/25);
 //    private JTextArea textArea_hex = new JTextArea(6, /*12*/25);
     private MyJTable table = new MyJTable(tempFile);
     private JFileChooser fc = new JFileChooser();
-    JPanel panelTable=new JPanel();
+    JPanel panelTable = new JPanel();
     private JScrollPane scroll = new JScrollPane(panelTable);
     private ArrayList<Integer[]> selection = new ArrayList<>();
     private JMenu file = new JMenu("File");
@@ -60,6 +54,7 @@ public class Controller extends JFrame {
 
 
     public Controller() throws HeadlessException {
+
         //settings
         super("Name");
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -72,6 +67,7 @@ public class Controller extends JFrame {
 /**
  * русское поле экспериментов
  * */
+        tempFile.deleteOnExit();
         //Charset charset = Charset.forName("windows-1251");
 
 //
@@ -119,8 +115,8 @@ public class Controller extends JFrame {
                 }
                 //     table.mark(selection);
                 //        if (!(selection.get(0)[0] == row && selection.get(0)[1] == col))
-                if ((selection.get(0)[0] != selection.get(1)[0] || selection.get(0)[1] != selection.get(1)[1])) table.clearSelection();
-
+                if ((selection.get(0)[0] != selection.get(1)[0] || selection.get(0)[1] != selection.get(1)[1]))
+                    table.clearSelection();
 
 
             }
@@ -133,26 +129,34 @@ public class Controller extends JFrame {
 //        JScrollPane scrollPane=new JScrollPane(table,JScrollPane.VERTICAL_SCROLLBAR_NEVER,JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 //        Dimension d=table.getPreferredSize();
 //        scrollPane.setPreferredSize(new Dimension(d.width,table.getRowHeight()*rows));
-//        JPanel navigation= new JPanel(new FlowLayout(FlowLayout.CENTER));
-        JButton next=new JButton("↑");
+//        JPanel navigation= new JPanel(new FlowLayout(FlowLayo  ut.CENTER));
+        JButton next = new JButton("↓");
         next.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-            table.moveNext();
+                table.moveNext();
             }
         });
-        JButton prev=new JButton("↓");
+        JButton prev = new JButton("↑");
         prev.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 table.movePrev();
             }
         });
-        JPanel panelButtons=new JPanel();
+        JButton clearSelection= new JButton("clearSelection");
+        clearSelection.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                selection.clear();
+            }
+        });
+        JPanel panelButtons = new JPanel();
+        panelButtons.add(clearSelection,BorderLayout.WEST);
         panelButtons.add(prev);
         panelButtons.add(next);
 
-        panel.add(scroll,BorderLayout.CENTER);
+        panel.add(scroll, BorderLayout.CENTER);
         panel.add(panelButtons, BorderLayout.SOUTH);
 
 //        panel.add(videoTable);
@@ -183,7 +187,7 @@ public class Controller extends JFrame {
         menu.add(utils);
         menu.add(view);
         file.add(open);
-     //   file.add(save);
+        //   file.add(save);
         view.add(viewData);
         view.add(resize);
         utils.add(copy);
@@ -200,7 +204,7 @@ public class Controller extends JFrame {
     }
 
 
-    private static JTextArea    createLimitedTextArea(int maxLength) {
+    private static JTextArea createLimitedTextArea(int maxLength) {
         JTextArea textArea = new JTextArea(5, 20);
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
@@ -253,8 +257,40 @@ public class Controller extends JFrame {
                     ex.printStackTrace();
                 }
             }*/
+
             if (fc.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-                table.loadData(fc.getSelectedFile());
+                File originalFile = new File(fc.getSelectedFile().getPath());
+                File tmpRafFile=null;
+                try {
+                    tmpRafFile = File.createTempFile(String.valueOf(fc.getSelectedFile()),".tmp");
+                    Files.copy(originalFile.toPath(), tmpRafFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+                tmpRafFile.deleteOnExit();
+
+                /*
+*     try {
+      // Создание временного файла
+      File tempFile = File.createTempFile("tempfile", ".txt");
+
+      // Копирование данных из оригинального файла во временный файл
+      File originalFile = new File("путь_к_оригинальному_файлу");
+      Files.copy(originalFile.toPath(), tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+      // Здесь вы можете использовать временный файл для редактирования
+
+      // Удаление временного файла после завершения работы программы
+      tempFile.deleteOnExit();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+*
+*
+* */
+                System.out.println(fc.getSelectedFile().getPath());
+                System.out.println(tmpRafFile.getPath());
+                table.setLoad(tmpRafFile);
                 //                final SwingWorker<ArrayList<ArrayList<String>>, String> worker = new SwingWorker<>() {
 //                    public final StringBuilder str = new StringBuilder();
 //                    public final ArrayList<ArrayList<String>> data = new ArrayList<>();
@@ -332,12 +368,12 @@ public class Controller extends JFrame {
             }
         }
     };
-/*    Action save = new AbstractAction("Save") {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            saveFile();
-        }
-    };*/
+    /*    Action save = new AbstractAction("Save") {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                saveFile();
+            }
+        };*/
     Action replace = new AbstractAction("insert and replace") {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -349,7 +385,7 @@ public class Controller extends JFrame {
             text1.setBorder(BorderFactory.createTitledBorder("текст замены"));
             PlainDocument docHex = (PlainDocument) text1.getDocument();
             docHex.setDocumentFilter(new Filter());
-            JSpinner spinnerRows = new JSpinner(new SpinnerNumberModel(0, 0, table.getNumRows() - 1, 1));
+            JSpinner spinnerRows = new JSpinner(new SpinnerNumberModel(0, 0, table.getNumRows() - 2, 1));
             spinnerRows.setBorder(BorderFactory.createTitledBorder("ряд"));
 
             JSpinner spinnerCols = new JSpinner(new SpinnerNumberModel(0, 0, table.getNumCols() - 2, 1));
@@ -360,7 +396,7 @@ public class Controller extends JFrame {
             panel.add(checkBox);
             panel.add(spinnerCols);
             panel.add(spinnerRows);
-            //panel.add(scrol);
+            panel.add(scrol);
 
             JOptionPane.showMessageDialog(null, panel);
                 /*if (checkBox.isSelected())
@@ -368,7 +404,7 @@ public class Controller extends JFrame {
                 else System.out.println(spinnerRows.getValue());
                 System.out.println("happy new year");
                 */
-            table.replace(checkBox.isSelected(), (Integer) spinnerRows.getValue() + 1, (Integer) spinnerCols.getValue() + 1, text1.getText());
+            table.insertReplace(checkBox.isSelected(), (Integer) spinnerRows.getValue() + 1, (Integer) spinnerCols.getValue() + 1, text1.getText());
         }
     };
     Action find = new AbstractAction("find") {
@@ -423,7 +459,7 @@ public class Controller extends JFrame {
 
                 JOptionPane.showMessageDialog(null, panel);
 
-                table.delete(checkBox.isSelected(), (Integer) spinnerRows.getValue() + 1, (Integer) spinnerCols.getValue() + 1, (Integer) spinnerBytes.getValue());
+                table.delete(checkBox.isSelected(), (Integer) spinnerRows.getValue() , (Integer) spinnerCols.getValue() , (Integer) spinnerBytes.getValue());
 
             } else {
                 JPanel panel = new JPanel(new GridLayout(4, 3));
@@ -472,7 +508,7 @@ public class Controller extends JFrame {
             if (selection.get(0)[0].equals(selection.get(1)[0])) selection.sort(Comparator.comparingInt(o -> o[1]));
             else selection.sort(Comparator.comparingInt(o -> o[0]));
             System.out.println(selection.get(0)[0] + "" + selection.get(0)[1] + "" + selection.get(1)[0] + "" + selection.get(1)[1]);
-            int r = selection.get(0)[0], c = selection.get(0)[1];
+            int r  = selection.get(0)[0], c = selection.get(0)[1];
 //            for (int i = selection.get(0)[0]; i < selection.get(1)[0]; i++) {
 //                for (int j = 0; j < selection.get(1)[1] - 1; j++) {//додумать логику как от одной ячейки до другой пройтись
             while (r * table.getNumRows() + c != selection.get(1)[0] * table.getNumRows() + selection.get(1)[1] + 1) {
@@ -495,18 +531,15 @@ public class Controller extends JFrame {
             selection.clear();
         }
     };
-    Action viewData=new AbstractAction("view selected Data") {
+    Action viewData = new AbstractAction("view selected Data") {
         @Override
         public void actionPerformed(ActionEvent e) {
-            if (selection.isEmpty())
-            {
+            if (selection.isEmpty()) {
                 JOptionPane.showMessageDialog(null, "please, select data first");
-            }
-            else
-            {
-                StringBuilder dec=new StringBuilder();
-                StringBuilder hex=new StringBuilder();
-                StringBuilder bin =new StringBuilder();
+            } else {
+                StringBuilder dec = new StringBuilder();
+                StringBuilder hex = new StringBuilder();
+                StringBuilder bin = new StringBuilder();
                 int r = selection.get(0)[0], c = selection.get(0)[1];
                 while (r * table.getNumRows() + c != selection.get(1)[0] * table.getNumRows() + selection.get(1)[1] + 1) {
                     if (c > table.getColumnCount() - 1) {
@@ -518,12 +551,12 @@ public class Controller extends JFrame {
                         tmp.insert(0, "0");
                     }
                     int intValue = Integer.parseInt(String.valueOf(tmp), 16);
-                    dec.append( Character.toChars(intValue));
+                    dec.append(Character.toChars(intValue));
                     hex.append(tmp);
                     bin.append(Integer.toBinaryString(intValue));
                     c++;
                 }
-                JOptionPane.showMessageDialog(null,"decimal: "+dec+"\nhex: "+hex+"\nbinary: "+bin);
+                JOptionPane.showMessageDialog(null, "decimal: " + dec + "\nhex: " + hex + "\nbinary: " + bin);
             }
         }
     };

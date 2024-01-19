@@ -12,34 +12,17 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.nio.file.Files;
 import java.util.ArrayList;
 
 
 public class MyJTable extends JTable implements ListSelectionListener {
     private Model model;
-    private File tempFile;
-    private RandomAccessFile raf;
-
-    {
-        try {
-            tempFile = File.createTempFile("hello", ".tmp");
-            tempFile.deleteOnExit();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        try {
-            raf = new RandomAccessFile(tempFile.getAbsolutePath(), "rw");
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-
-    }
+    private RandomAccessFile rafFile;
 
 
-    private int numPages;
+    private int numPage = 0;
     private int curIndex = 0;
-    private boolean isOpenedFile;
+    private boolean fileIsOpen = false;
     private int limitRows = 16;
 
     public MyJTable(File tempFile) {
@@ -48,7 +31,13 @@ public class MyJTable extends JTable implements ListSelectionListener {
 
         // model = (DefaultTableModel) getModel();
         super(new Model(4, 5));
-        this.tempFile=tempFile;
+        try {
+
+            rafFile = new RandomAccessFile(tempFile.getAbsolutePath(), "rw");
+            System.out.println(tempFile.getAbsolutePath());
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
         System.out.println(getColumnCount() + getRowCount());
         model = (Model) getModel();
         setCellSelectionEnabled(true);
@@ -114,10 +103,172 @@ public class MyJTable extends JTable implements ListSelectionListener {
         model.fireTableDataChanged();
     }
 
-    public void loadData(File file) {
+    public void setLoad(File file) {
+        try {
+            rafFile = new RandomAccessFile(file, "rw");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        fileIsOpen = true;
+        curIndex = 0;
+        numPage = 0;
+        loadData();
+        transferFocus();
+        model.fireTableStructureChanged();
+        System.out.println(rafFile);
+    }
 
-        model.loadData(file);
-        //     model.fireTableDataChanged();
+
+    private void updateData() throws IOException {//when we have new page after writing
+        writeDataToFile();
+        model.counterPlus();
+        numPage++;
+        if (fileIsOpen && rafFile.getFilePointer() < rafFile.length())
+            loadData();
+        else
+            model.clear();
+        System.out.println(model.toString());
+        transferFocus();
+        model.fireTableStructureChanged();
+        // System.out.println(rafFile);
+    }
+
+    private void writeDataToFile() {
+        System.out.println(model.toString());
+        ArrayList<ArrayList<Byte>> tmp = model.getData();
+        try {
+            rafFile.seek(17 * (getNumCols() - 1) * numPage);
+            System.out.println(rafFile.getFilePointer());
+            for (ArrayList<Byte> list : tmp) {
+                //         System.out.println(list.toString());
+                list.remove(0);
+                System.out.println(list.toString());
+                byte[] array = new byte[getNumCols() - 1];
+                for (int i = 0; i < array.length; i++) {
+                    array[i] = list.get(i);
+                }
+                //   System.out.println(Arrays.toString(array));
+
+
+                //  System.out.println(rafFile.getFilePointer());
+                rafFile.write(array);
+                // System.out.println(rafFile.getFilePointer());
+
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void loadData() {
+        try {
+            rafFile.seek(17 * (getNumCols() - 1) * numPage);
+            System.out.println("file pointer:" + rafFile.getFilePointer());
+            //тут делать сик, чтобы просто подгружать определенную страницу сделать один фор через мин либо размер либо 64
+            ArrayList<ArrayList<Byte>> newData = new ArrayList<>();
+            ArrayList<Byte> tmp = new ArrayList<>();
+            for (int i = 0; i < model.getColumnCount(); i++) {
+                tmp.add((byte) (i - 1));
+            }
+            tmp.set(0, (byte) 0);
+            newData.add(tmp);
+            tmp = new ArrayList<>();
+            tmp.add((byte) (17 * numPage));
+            int numOperations = (int) Math.min(rafFile.length() - rafFile.getFilePointer(), (getNumCols() - 1) * 17);//разобраться почему добавляется 17ая строчка, проверить как будет работать следующая подгрузка, если файла больше нет
+            System.out.println("num" + numOperations);
+            for (int i = 0; i < numOperations; i++) {
+                byte elem;
+                elem = rafFile.readByte();
+                System.out.print(elem);
+                tmp.add(elem);
+                if (tmp.size() == model.getColumnCount()) {
+                    System.out.println();
+                    newData.add(tmp);
+                    tmp = new ArrayList<>();
+                    tmp.add((byte) ((newData.size() - 1) + 17 * numPage));
+                }
+            }
+            if (tmp.size() > 1) {
+                while (tmp.size() != model.getColumnCount()) {
+                    tmp.add((byte) 0);
+                }
+                newData.add(tmp);
+            }
+            /*if (rafFile.length() > 64)//we have more than 1 data model
+            {
+                for (int i = 0; i < 64; i++) {
+                    byte elem;
+                    elem = rafFile.readByte();
+                    System.out.print(elem);
+                    tmp.add(elem);
+                    if (tmp.size() == model.getColumnCount()) {
+                        System.out.println();
+                        newData.add(tmp);
+                        tmp = new ArrayList<>();
+                        tmp.add((byte) (newData.size() - 1));
+                    }
+                }
+            } else {
+                for (int i = 0; i < rafFile.length(); i++) {
+                    byte elem;
+                    elem = rafFile.readByte();
+                    System.out.print(elem);
+
+                    tmp.add(elem);
+                    if (tmp.size() == model.getColumnCount()) {
+                        System.out.println();
+
+                        newData.add(tmp);
+                        tmp = new ArrayList<>();
+                        tmp.add((byte) (newData.size() - 1));
+                    }
+                }
+                while (tmp.size() != model.getColumnCount()) {
+                    tmp.add((byte) 0);
+                }
+                newData.add(tmp);
+            }*/
+            model.setData(newData);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void moveNext() {
+//        ArrayList<ArrayList<Byte>> visibleRows = getVisibleRows(curIndex + 10, Math.min(model.getRowCount(), curIndex + 10));
+//        setRowSelectionInterval(0, visibleRows.size());
+//        curIndex = Math.min(model.getRowCount(), curIndex + 10);
+//        model.fireTableDataChanged();
+        try {
+            if (rafFile.getFilePointer() < rafFile.length()) {
+                System.out.println("move next");
+                writeDataToFile();
+                model.counterPlus();
+                numPage++;
+                loadData();
+                transferFocus();
+                model.fireTableStructureChanged();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void movePrev() {
+//        ArrayList<ArrayList<Byte>> visibleRows = getVisibleRows(curIndex - 10, Math.min(model.getRowCount(), curIndex - 10));
+//        setRowSelectionInterval(0, visibleRows.size());
+//        curIndex = Math.min(model.getRowCount(), curIndex - 10);
+//        model.fireTableDataChanged();
+        if (numPage > 0) {
+            System.out.println("move pref");
+            writeDataToFile();
+            model.counterMinus();
+            numPage--;
+            loadData();
+            transferFocus();
+            model.fireTableStructureChanged();
+        }
     }
 
     public int getNumCols() {
@@ -144,8 +295,24 @@ public class MyJTable extends JTable implements ListSelectionListener {
         return "hex: " + tmp + " normal:" + String.valueOf(charArray);
     }
 
-    public void changeNumCols(int newNumCol) {
-        //       model.resize(newNumCol);
+    public void changeNumCols(int newNumCol) {//working with raf
+        /*  if(!fileIsOpen) */
+        /*
+         * я нахожусь на какой-то позиции каретки
+         * rafFile.getFilePointer()
+         * начало страницы, первый pointer= 17 * (getNumCols() - 1) * numPage
+         * pointer/17 * (NEWgetNumCols() - 1)=newNumPage
+         * */
+
+        writeDataToFile();
+        model.resize(newNumCol);
+        try {
+            numPage = (int) (rafFile.getFilePointer() / (17 * newNumCol));
+            System.out.println("new numPage" + numPage);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        loadData();
         System.out.println(model.toString());
         model.fireTableStructureChanged();
     }
@@ -163,27 +330,98 @@ public class MyJTable extends JTable implements ListSelectionListener {
 
     }
 
-    public void replace(boolean selected, int row, int col, String text) {
-        if (text.length() % 2 != 0) text += 0;
-        ArrayList<String> replaceData = new ArrayList<>();
-        for (int i = 0; i < text.length(); i += 2) {
-            replaceData.add(text.substring(i, i + 2));
-        }
+    public void delete(boolean selected, int row, int col, Integer numBytes) {
+        writeDataToFile();
         if (selected) {//insert with replace
-            for (String replaceDatum : replaceData) {
-                if (col > model.getColumnCount() - 1) {
-                    row++;
-                    if (row > getRowCount() - 1)
-                        model.addRow();//рассмотреть случай когда возможно надо добавлять ряд
-                    model.fireTableRowsInserted(0, getRowCount());
-                    col = 1;
-                }
-                if (row > getRowCount() - 1)//если вставлять после в новый ряд
-                    model.addRow();
-                model.fireTableRowsInserted(0, getRowCount());
+//            row++;
+//            col++;
+            System.out.println("delete with replace");
+            System.out.println(numBytes);
+//            for (int i = 0; i < numBytes; i++) {
+//                if (col > model.getColumnCount() - 1) {
+//                    row++;
+//                    col = 1;
+//                }
+//                model.setValueAt("", row, col);
+//                col++;
+//            }
+            try {
+                rafFile.seek(row * (getNumCols() - 1) + col);
+                System.out.println(rafFile.getFilePointer());
 
-                model.setValueAt(replaceDatum, row, col);
-                col++;
+                for (int i = 0; i < numBytes; i++) {
+                    rafFile.seek(rafFile.getFilePointer()-1);
+                    rafFile.write((byte) 0);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            loadData();
+
+        } else {//insert and move data
+            /*if (col == getNumCols() && row == getNumRows())
+                col--;
+            if (row > getRowCount() - 1) {
+                col = getNumCols() - 1;
+                row--;
+            }
+            */
+            //model.deleteWithShift(numBytes, row, col);
+            int position = row * (getNumCols() - 1) + col;
+            System.out.println("pos" + position);
+            // Количество байтов, которые нужно удалить
+            // Сдвиг всех байтов после удаленных байтов на нужное количество позиций влево
+            try {
+                int len = (int) rafFile.length();
+                for (int i = (position + numBytes); i < len; i++) {
+                    System.out.print("-");
+                    rafFile.seek(i);
+                    byte b = rafFile.readByte();
+                    //        System.out.println("byte:"+b);
+                    rafFile.seek(i - numBytes);
+                    rafFile.write(b);
+                }
+                System.out.println("new len" + (len - numBytes));
+                System.out.println("len" + len);
+                rafFile.setLength(len - numBytes);
+//                if (position >= rafFile.length()) position = rafFile.length() - 1;
+//                rafFile.seek(position + numBytes);
+//                while ((bytesRead = rafFile.read(buffer)) != -1) {
+//                    rafFile.seek(rafFile.getFilePointer() - bytesRead - numBytes);
+//                    rafFile.write(buffer, 0, bytesRead);
+//                    rafFile.seek(rafFile.getFilePointer() + numBytes);
+//                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        loadData();
+        model.fireTableDataChanged();
+        /*↑↓→←*/
+    }
+
+    public void insertReplace(boolean selected, int row, int col, String text) {
+        row--;
+        col--;
+        System.out.println(row);
+        System.out.println(col);
+        System.out.println(text);
+        writeDataToFile();
+        if (text.length() % 2 != 0) text += 0;
+        ArrayList<Byte> replaceData = new ArrayList<>();
+        for (int i = 0; i < text.length(); i += 2) {
+            replaceData.add((byte) Integer.parseInt(text.substring(i, i + 2), 16));
+        }
+        System.out.println(replaceData.toString());
+        if (selected) {//insert with replace
+
+            try {
+                rafFile.seek(row * (getNumCols() - 1) + col);
+                for (Byte replaceDatum : replaceData) {
+                    rafFile.write(replaceDatum);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         } else {//just insert and move data
             if (col == getNumCols() && row == getNumRows())
@@ -192,10 +430,24 @@ public class MyJTable extends JTable implements ListSelectionListener {
                 col = getNumCols() - 1;
                 row--;
             }
-
+            try {
+                rafFile.setLength(rafFile.length() + replaceData.size());
+                rafFile.seek(row * (getNumCols() - 1) + col);
+                for (int i = row * (getNumCols()-1) + col; i < rafFile.length()-replaceData.size(); i = i + replaceData.size()) {
+                    for (int j = 0; j < replaceData.size(); j++) {
+                        byte b = rafFile.readByte();
+                        rafFile.seek(rafFile.getFilePointer()-1);
+                        rafFile.write(replaceData.get(j));
+                        System.out.println(rafFile.getFilePointer());//разобраться на этом моменте
+                        replaceData.set(j, b);
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             //        model.insertWithShift(replaceData, row, col);
-            model.fireTableDataChanged();
         }
+        loadData();
         model.fireTableDataChanged();
     }
 
@@ -226,37 +478,6 @@ public class MyJTable extends JTable implements ListSelectionListener {
         return "asd";
     }
 
-    public void delete(boolean selected, int row, int col, Integer numBytes) {
-
-        if (selected) {//insert with replace
-            for (int i = 0; i < numBytes; i++) {
-                if (col > model.getColumnCount() - 1) {
-                    row++;
-                    if (row > getRowCount() - 1)
-                        model.addRow();//рассмотреть случай когда возможно надо добавлять ряд
-                    model.fireTableRowsInserted(0, getRowCount());
-                    col = 1;
-                }
-                if (row > getRowCount() - 1)//если вставлять после в новый ряд
-                    model.addRow();
-                model.fireTableRowsInserted(0, getRowCount());
-                model.setValueAt("", row, col);
-                col++;
-            }
-        } else {//just insert and move data
-            if (col == getNumCols() && row == getNumRows())
-                col--;
-            if (row > getRowCount() - 1) {
-                col = getNumCols() - 1;
-                row--;
-            }
-
-            model.deleteWithShift(numBytes, row, col);
-        }
-        model.fireTableDataChanged();
-
-        /*↑↓→←*/
-    }
 
     public ArrayList<ArrayList<Byte>> getVisibleRows(int startIndex, int endIndex) {
         ArrayList<ArrayList<Byte>> visibleRows = new ArrayList<>();
@@ -265,20 +486,6 @@ public class MyJTable extends JTable implements ListSelectionListener {
             visibleRows.add(row);
         }
         return visibleRows;
-    }
-
-    public void moveNext() {
-        ArrayList<ArrayList<Byte>> visibleRows = getVisibleRows(curIndex + 10, Math.min(model.getRowCount(), curIndex + 10));
-        setRowSelectionInterval(0, visibleRows.size());
-        curIndex = Math.min(model.getRowCount(), curIndex + 10);
-        model.fireTableDataChanged();
-    }
-
-    public void movePrev() {
-        ArrayList<ArrayList<Byte>> visibleRows = getVisibleRows(curIndex - 10, Math.min(model.getRowCount(), curIndex - 10));
-        setRowSelectionInterval(0, visibleRows.size());
-        curIndex = Math.min(model.getRowCount(), curIndex - 10);
-        model.fireTableDataChanged();
     }
 
 
@@ -298,67 +505,69 @@ public class MyJTable extends JTable implements ListSelectionListener {
                 if ((getLength() + str.length()) <= limit) {
 //                    System.out.println("offset:"+offset+"str:"+str+"attr"+attr);
 //                    System.out.println("row:"+editingRow+"col:"+editingColumn);
-//                    System.out.println("length:"+getLength());
+
                     //      if(model.getValueAt(editingRow,editingColumn).toString().isEmpty())
+
                     super.insertString(offset, str, attr);
+                    //          System.out.println(model.getValueAt(editingRow, editingColumn));
+                    //      System.out.println("insert");
 //                    lastR=editingRow;
 //                    lastC=editingColumn;
                     //        else {super.replace(offset,1,str,attr);}
-                } else {
-                    System.out.println("next");
+//                    System.out.println("length:"+getLength());
+//                    System.out.println("str.length:"+str.length());
+                }
+                /*     if (getLength() == 2) */
+                else {
                     if (editingColumn < getColumnCount() - 1) {//переход на следующую ячейку
+                        //        System.out.println("next");
                         changeSelection(editingRow, editingColumn + 1, false, false);
-                        model.setValueAt(str, editingRow, editingColumn + 1);
+                        //    model.setValueAt(str, editingRow, editingColumn +1);
                         editCellAt(editingRow, editingColumn + 1);
 
                     } else if (editingRow < getRowCount() - 1) {//переход на новую строку
-                        System.out.println("data" + model.getValueAt(editingRow + 1, 1));
+                        //    System.out.println("data" + model.getValueAt(editingRow + 1, 1));
+                        //      System.out.println("next row");
 
                         changeSelection(editingRow + 1, 1, false, false);
-                        model.setValueAt(str, editingRow + 1, 1);
+                        //      model.setValueAt(str, editingRow + 1, 1);
                         editCellAt(editingRow + 1, 1);
-                    } else if (editingRow == 16) {
-                        System.out.println("limit exceed");
-                        writeData();
+                    } else if (editingRow == 17) {
                         changeSelection(1, 1, false, false);
-                        model.setValueAt(str,  1, 1);
-                        editCellAt( 1, 1);
+                        editCellAt(1, 1);
+                        model.fireTableCellUpdated(16, 4);
+
+                        //    System.out.println("limit exceed");
+                        //  System.out.println(model.getValueAt(editingRow, editingColumn));
+                        try {
+                            updateData();//if file is open need to upload data to the next page
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        changeSelection(1, 1, false, false);
+                        editCellAt(1, 1);
                     } else {//добавление новой строки
+                        //   System.out.println("new row");
                         model.addRow();
                         model.fireTableRowsInserted(0, getRowCount());
                         // model.fireTableStructureChanged();
                         changeSelection(editingRow + 1, 1, false, false);
-                        model.setValueAt(str, editingRow + 1, 1);
+                        //model.setValueAt(str, editingRow + 1, 1);
                         editCellAt(editingRow + 1, 1);
                     }
                     transferFocus();
-                    System.out.println("str=" + str);
-                    System.out.println("Row:" + editingRow + " Col" + editingColumn);
-                    model.fireTableCellUpdated(editingRow, editingColumn);
+
+                    //   model.setValueAt(str, editingRow, editingColumn);
+                    super.insertString(0, str, attr);
+
                     // ((JTextField) getCellEditor().getTableCellEditorComponent(,"",true, editingRow, editingColumn)).appendText("");
                 }
+//                System.out.println("str=" + str);
+                //         System.out.println("Row:" + editingRow + " Col" + editingColumn);
+                model.fireTableCellUpdated(editingRow, editingColumn);
             }
         }
 
-        private void writeData() {
-            for (ArrayList<Byte> list : model.getData()) {
-                byte[] array = new byte[model.getColumnCount()];
-                for (int i = 0; i < model.getColumnCount(); i++) {
-                    array[i] = list.get(i);
-                }
-                try {
-                    Files.write(tempFile.toPath(), array);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            model.counterPlus();
-            model.clear();
-            System.out.println(model.toString());
-            model.fireTableStructureChanged();
-            System.out.println(tempFile.getAbsolutePath());
-            System.out.println(tempFile.getPath());
-        }
 
     }
 
