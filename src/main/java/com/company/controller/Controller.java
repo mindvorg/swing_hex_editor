@@ -1,20 +1,25 @@
 package com.company.controller;
 
 import com.company.converter.Filter;
-
 import com.company.gigachatTable.MyJTable;
 
-
 import javax.swing.*;
-import javax.swing.text.*;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Document;
+import javax.swing.text.PlainDocument;
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 
 public class Controller extends JFrame {
 
@@ -30,7 +35,7 @@ public class Controller extends JFrame {
 
     {
         try {
-            tempFile = File.createTempFile("hello", ".tmp");
+            tempFile = File.createTempFile("hello", "");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -144,7 +149,7 @@ public class Controller extends JFrame {
                 table.movePrev();
             }
         });
-        JButton clearSelection= new JButton("clearSelection");
+        JButton clearSelection = new JButton("clearSelection");
         clearSelection.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -152,7 +157,7 @@ public class Controller extends JFrame {
             }
         });
         JPanel panelButtons = new JPanel();
-        panelButtons.add(clearSelection,BorderLayout.WEST);
+        panelButtons.add(clearSelection, BorderLayout.WEST);
         panelButtons.add(prev);
         panelButtons.add(next);
 
@@ -260,10 +265,12 @@ public class Controller extends JFrame {
 
             if (fc.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
                 File originalFile = new File(fc.getSelectedFile().getPath());
-                File tmpRafFile=null;
+
+                File tmpRafFile = null;
                 try {
-                    tmpRafFile = File.createTempFile(String.valueOf(fc.getSelectedFile()),".tmp");
+                    tmpRafFile = File.createTempFile(String.valueOf(fc.getSelectedFile()), "");
                     Files.copy(originalFile.toPath(), tmpRafFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    tmpRafFile.deleteOnExit();
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
@@ -397,14 +404,15 @@ public class Controller extends JFrame {
             panel.add(spinnerCols);
             panel.add(spinnerRows);
             panel.add(scrol);
-
-            JOptionPane.showMessageDialog(null, panel);
+            int result = JOptionPane.showConfirmDialog(null, panel, "enter info", JOptionPane.YES_NO_OPTION);
+            //JOptionPane.showMessageDialog(null, panel);
                 /*if (checkBox.isSelected())
                     System.out.println(spinnerCols.getValue());
                 else System.out.println(spinnerRows.getValue());
                 System.out.println("happy new year");
                 */
-            table.insertReplace(checkBox.isSelected(), (Integer) spinnerRows.getValue() + 1, (Integer) spinnerCols.getValue() + 1, text1.getText());
+            if (result == JOptionPane.OK_OPTION)
+                table.insertReplace(checkBox.isSelected(), (Integer) spinnerRows.getValue() + 1, (Integer) spinnerCols.getValue() + 1, text1.getText());
         }
     };
     Action find = new AbstractAction("find") {
@@ -415,8 +423,14 @@ public class Controller extends JFrame {
             JTextField textField = new JTextField();
             textField.setBorder(BorderFactory.createTitledBorder("введите текст для поиска"));
             panel.add(textField);
-            JOptionPane.showMessageDialog(null, panel);
-            table.find(textField.getText());
+            int result = JOptionPane.showConfirmDialog(null, panel, "enter info", JOptionPane.YES_NO_OPTION);
+            //JOptionPane.showMessageDialog(null, panel);
+                /*if (checkBox.isSelected())
+                    System.out.println(spinnerCols.getValue());
+                else System.out.println(spinnerRows.getValue());
+                System.out.println("happy new year");
+                */
+            if (result == JOptionPane.OK_OPTION) table.find(textField.getText());
             System.out.println("all clear");
         }
     };
@@ -428,9 +442,9 @@ public class Controller extends JFrame {
             JTextField textField = new JTextField();
             textField.setBorder(BorderFactory.createTitledBorder("количество колонок"));
             panel.add(textField);
-            JOptionPane.showMessageDialog(null, panel);
-            System.out.println("change to " + Integer.parseInt(textField.getText()) + " cols");
-            table.changeNumCols(Integer.parseInt(textField.getText()));
+            int result = JOptionPane.showConfirmDialog(null, panel, "enter info", JOptionPane.YES_NO_OPTION);
+            if (result == JOptionPane.OK_OPTION)
+                table.changeNumCols(Integer.parseInt(textField.getText()));
         }
     };
     Action delete = new AbstractAction("delete") {
@@ -457,26 +471,31 @@ public class Controller extends JFrame {
                 panel.add(spinnerBytes);
 
 
-                JOptionPane.showMessageDialog(null, panel);
+//                JOptionPane.showMessageDialog(null, panel);
 
-                table.delete(checkBox.isSelected(), (Integer) spinnerRows.getValue() , (Integer) spinnerCols.getValue() , (Integer) spinnerBytes.getValue());
+                int result = JOptionPane.showConfirmDialog(null, panel, "enter info", JOptionPane.YES_NO_OPTION);
+                if (result == JOptionPane.OK_OPTION)
+                    table.delete(checkBox.isSelected(), (Integer) spinnerRows.getValue(), (Integer) spinnerCols.getValue(), (Integer) spinnerBytes.getValue());
 
             } else {
                 JPanel panel = new JPanel(new GridLayout(4, 3));
                 JCheckBox checkBox = new JCheckBox("insert with replace or not");
                 panel.add(checkBox);
-                JOptionPane.showMessageDialog(null, panel);
-                int num = selection.get(1)[0] * (table.getNumCols() - 1) + selection.get(1)[1] - selection.get(0)[0] * (table.getNumCols() - 1) - selection.get(0)[1] + 1;
-                //num=(selection.get(1)[0]-selection.get(0)[0]+1)*(selection.get(1)[1]-selection.get(0)[1]+1);
-                System.out.println("num " + num);
-                table.delete(checkBox.isSelected(), selection.get(0)[0], selection.get(0)[1], num);
+                int result = JOptionPane.showConfirmDialog(null, panel, "enter info", JOptionPane.YES_NO_OPTION);
+                if (result == JOptionPane.OK_OPTION) {
+                    int num = selection.get(1)[0] * (table.getNumCols() - 1) + selection.get(1)[1] - selection.get(0)[0] * (table.getNumCols() - 1) - selection.get(0)[1] + 1;
+                    //num=(selection.get(1)[0]-selection.get(0)[0]+1)*(selection.get(1)[1]-selection.get(0)[1]+1);
+                    System.out.println("num " + num);
+                    table.delete(checkBox.isSelected(), selection.get(0)[0], selection.get(0)[1], num);
+                }
             }
         }
     };
     Action copy = new AbstractAction("copy") {
         @Override
         public void actionPerformed(ActionEvent e) {
-            System.out.println("copy");
+            if (selection.isEmpty()) JOptionPane.showMessageDialog(null, "empty selection");
+            else {    System.out.println("copy");
             StringBuilder str = new StringBuilder();
 
             System.out.println(selection.get(0)[0] + "" + selection.get(0)[1] + "" + selection.get(1)[0] + "" + selection.get(1)[1]);
@@ -497,38 +516,40 @@ public class Controller extends JFrame {
             Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
             clipboard.setContents(select, select);
             selection.clear();
-        }
+        }}
     };
     Action cut = new AbstractAction("cut") {
         @Override
         public void actionPerformed(ActionEvent e) {
             System.out.println("Cut");
             StringBuilder str = new StringBuilder();
-
-            if (selection.get(0)[0].equals(selection.get(1)[0])) selection.sort(Comparator.comparingInt(o -> o[1]));
-            else selection.sort(Comparator.comparingInt(o -> o[0]));
-            System.out.println(selection.get(0)[0] + "" + selection.get(0)[1] + "" + selection.get(1)[0] + "" + selection.get(1)[1]);
-            int r  = selection.get(0)[0], c = selection.get(0)[1];
+            if (selection.isEmpty()) JOptionPane.showMessageDialog(null, "empty selection");
+            else {
+                if (selection.get(0)[0].equals(selection.get(1)[0])) selection.sort(Comparator.comparingInt(o -> o[1]));
+                else selection.sort(Comparator.comparingInt(o -> o[0]));
+                System.out.println(selection.get(0)[0] + "" + selection.get(0)[1] + "" + selection.get(1)[0] + "" + selection.get(1)[1]);
+                int r = selection.get(0)[0], c = selection.get(0)[1];
 //            for (int i = selection.get(0)[0]; i < selection.get(1)[0]; i++) {
 //                for (int j = 0; j < selection.get(1)[1] - 1; j++) {//додумать логику как от одной ячейки до другой пройтись
-            while (r * table.getNumRows() + c != selection.get(1)[0] * table.getNumRows() + selection.get(1)[1] + 1) {
-                if (c > table.getColumnCount() - 1) {
-                    r++;
-                    c = 1;
+                while (r * table.getNumRows() + c != selection.get(1)[0] * table.getNumRows() + selection.get(1)[1] + 1) {
+                    if (c > table.getColumnCount() - 1) {
+                        r++;
+                        c = 1;
+                    }
+                    System.out.println("r" + (r - 1) + "c" + (c - 1));
+                    str.append(table.getValueAt(r, c));
+                    c++;
+                    //}
                 }
-                System.out.println("r" + (r - 1) + "c" + (c - 1));
-                str.append(table.getValueAt(r, c));
-                c++;
-                //}
+                StringSelection select = new StringSelection(str.toString());
+                int num = selection.get(1)[0] * (table.getNumCols() - 1) + selection.get(1)[1] - selection.get(0)[0] * (table.getNumCols() - 1) - selection.get(0)[1] + 1;
+                //num=(selection.get(1)[0]-selection.get(0)[0]+1)*(selection.get(1)[1]-selection.get(0)[1]+1);
+                System.out.println("num " + num);
+                table.delete(false, selection.get(0)[0], selection.get(0)[1], num);
+                Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+                clipboard.setContents(select, select);
+                selection.clear();
             }
-            StringSelection select = new StringSelection(str.toString());
-            int num = selection.get(1)[0] * (table.getNumCols() - 1) + selection.get(1)[1] - selection.get(0)[0] * (table.getNumCols() - 1) - selection.get(0)[1] + 1;
-            //num=(selection.get(1)[0]-selection.get(0)[0]+1)*(selection.get(1)[1]-selection.get(0)[1]+1);
-            System.out.println("num " + num);
-            table.delete(false, selection.get(0)[0], selection.get(0)[1], num);
-            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-            clipboard.setContents(select, select);
-            selection.clear();
         }
     };
     Action viewData = new AbstractAction("view selected Data") {

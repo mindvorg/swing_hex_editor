@@ -38,7 +38,8 @@ public class HexFilter extends DocumentFilter {
      //       System.out.println("before insert"+fb.getDocument().getText(0,fb.getDocument().getLength()));
           //  super.insertString(fb, offset, text , attrs);
        //     System.out.println("after insert"+fb.getDocument().getText(0,fb.getDocument().getLength()));
-
+            //DefaultCaret caret = (DefaultCaret) getCaret();
+            //caret.setUpdatePolicy(DefaultCaret.NEVER_UPDATE);
             StringBuilder str=new StringBuilder((fb.getDocument().getText(0,fb.getDocument().getLength())));
             str.insert(offset,text);
             str=new StringBuilder(str.toString().replaceAll("\n",""));

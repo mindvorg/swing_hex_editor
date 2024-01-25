@@ -1,23 +1,24 @@
 package com.company.gigachatTable;
 
 import com.company.video.Model;
+import org.riversun.bigdoc.bin.BigFileSearcher;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.PlainDocument;
 import java.awt.*;
-import java.awt.event.*;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.awt.event.MouseEvent;
+import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 
 public class MyJTable extends JTable implements ListSelectionListener {
     private Model model;
     private RandomAccessFile rafFile;
+    private String path;
 
 
     private int numPage = 0;
@@ -32,8 +33,9 @@ public class MyJTable extends JTable implements ListSelectionListener {
         // model = (DefaultTableModel) getModel();
         super(new Model(4, 5));
         try {
-
+            path=tempFile.getPath();
             rafFile = new RandomAccessFile(tempFile.getAbsolutePath(), "rw");
+            tempFile.deleteOnExit();
             System.out.println(tempFile.getAbsolutePath());
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -104,8 +106,11 @@ public class MyJTable extends JTable implements ListSelectionListener {
     }
 
     public void setLoad(File file) {
+
         try {
+            path=file.getPath();
             rafFile = new RandomAccessFile(file, "rw");
+            file.deleteOnExit();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -115,7 +120,8 @@ public class MyJTable extends JTable implements ListSelectionListener {
         loadData();
         transferFocus();
         model.fireTableStructureChanged();
-        System.out.println(rafFile);
+
+
     }
 
 
@@ -138,11 +144,11 @@ public class MyJTable extends JTable implements ListSelectionListener {
         ArrayList<ArrayList<Byte>> tmp = model.getData();
         try {
             rafFile.seek(17 * (getNumCols() - 1) * numPage);
-            System.out.println(rafFile.getFilePointer());
+         //   System.out.println(rafFile.getFilePointer());
             for (ArrayList<Byte> list : tmp) {
                 //         System.out.println(list.toString());
                 list.remove(0);
-                System.out.println(list.toString());
+         //       System.out.println(list.toString());
                 byte[] array = new byte[getNumCols() - 1];
                 for (int i = 0; i < array.length; i++) {
                     array[i] = list.get(i);
@@ -241,6 +247,7 @@ public class MyJTable extends JTable implements ListSelectionListener {
 //        curIndex = Math.min(model.getRowCount(), curIndex + 10);
 //        model.fireTableDataChanged();
         try {
+
             if (rafFile.getFilePointer() < rafFile.length()) {
                 System.out.println("move next");
                 writeDataToFile();
@@ -318,14 +325,59 @@ public class MyJTable extends JTable implements ListSelectionListener {
     }
 
     public void find(String text) {
-        Integer[] result;
+        if (text.length() % 2 != 0) text += 0;
+        //ArrayList<Byte> replaceData = new ArrayList<>();
+        byte[] bytes =new byte[text.length()/2];
+        for (int i = 0; i < text.length(); i+=2) {
+            bytes[i/2]=(byte) Integer.parseInt(text.substring(i, i + 2), 16);
+        }
+        System.out.println(Arrays.toString(bytes));
+
+
+        writeDataToFile();
+        System.out.println("find start");
+        System.out.println(path);
+        try {
+            byte[] searchBytes=text.getBytes("UTF-8");
+            BigFileSearcher searcher=new BigFileSearcher();
+            List<Long> findList= searcher.searchBigFile(new File(path),bytes);
+            System.out.println("find:"+findList);
+            if(!findList.isEmpty())
+            {
+                numPage = (int) (findList.get(0) / (17*getNumCols()));
+                System.out.println(numPage);
+                Long pos=findList.get(0);
+                pos-=numPage*17*(getNumCols()-1);
+                System.out.println((int) (pos/(getNumCols()-1)));
+                System.out.println((int) (pos%(getNumCols()-1)));
+
+                loadData();
+                model.fireTableDataChanged();
+                   changeSelection( (int) (pos/(getNumCols()-1))+1,(int) (pos%(getNumCols()-1))+1,false,false);
+               //changeSelection(2,2,false,false);
+                // transferFocus();
+
+            }
+            else{
+                System.out.println("not found");
+            }
+
+        } catch (UnsupportedEncodingException ex) {
+            ex.printStackTrace();
+        }
+            //byte[] bytes=text.getBytes("utf-8");
+
         //     result = model.findInData(text);
-        clearSelection();
+
+
+
+        System.out.println("find start");
+
+       // clearSelection();
         //    changeSelection(result[0], result[1], false, false);
         // setValueAt(getValueAt(result[0], result[1]),result[0], result[1]);
 //        editCellAt(1, 3);
 //        transferFocus();
-        //model.fireTableDataChanged();
         //model.fireTableCellUpdated(result[0], result[1]);
 
     }
@@ -350,7 +402,7 @@ public class MyJTable extends JTable implements ListSelectionListener {
                 System.out.println(rafFile.getFilePointer());
 
                 for (int i = 0; i < numBytes; i++) {
-                    rafFile.seek(rafFile.getFilePointer()-1);
+                    rafFile.seek(rafFile.getFilePointer() - 1);
                     rafFile.write((byte) 0);
                 }
             } catch (IOException e) {
@@ -416,14 +468,14 @@ public class MyJTable extends JTable implements ListSelectionListener {
         if (selected) {//insert with replace
 
             try {
-                rafFile.seek(row * (getNumCols() - 1) + col);
+                rafFile.seek(numPage * 17 + row * (getNumCols() - 1) + col);
                 for (Byte replaceDatum : replaceData) {
                     rafFile.write(replaceDatum);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        } else {//just insert and move data
+        } else {// insert and move data
             if (col == getNumCols() && row == getNumRows())
                 col--;
             if (row > getRowCount() - 1) {
@@ -431,17 +483,52 @@ public class MyJTable extends JTable implements ListSelectionListener {
                 row--;
             }
             try {
-                rafFile.setLength(rafFile.length() + replaceData.size());
-                rafFile.seek(row * (getNumCols() - 1) + col);
-                for (int i = row * (getNumCols()-1) + col; i < rafFile.length()-replaceData.size(); i = i + replaceData.size()) {
+//                rafFile.setLength(rafFile.length() + replaceData.size());
+//                rafFile.seek(numPage * 17 + row * (getNumCols() - 1) + col);
+//                byte[] bytes = new byte[(int) (rafFile.length() - numPage * 17 + row * (getNumCols() - 1) + col)];
+//                rafFile.read(bytes);
+//
+//                rafFile.seek(numPage * 17 + row * (getNumCols() - 1) + col);
+//                for (byte b : replaceData) {
+//                    rafFile.write(b);
+//
+//
+//                }
+//                rafFile.write(bytes);//попробовать оставить что ниже написано, но взять массив из 1024 байтов, например, считывать и записывать поверх, немного должно ускорить программу
+
+
+                rafFile.seek(numPage * 17 + row * (getNumCols() - 1) + col);
+                byte[] bytes=new byte[replaceData.size()];
+                rafFile.read(bytes);
+                rafFile.seek(numPage * 17 + row * (getNumCols() - 1) + col);
+                for (byte b : replaceData) {
+                    rafFile.write(b);
+                }
+
+
+                for (long i = rafFile.getFilePointer(); i <rafFile.length(); i=i+replaceData.size()) {
+                    byte[] tmp=new byte[replaceData.size()];
+             //       System.out.print(rafFile.getFilePointer()+" | ");
+                    rafFile.read(tmp);
+               //     System.out.print(rafFile.getFilePointer()+" | ");
+                    rafFile.seek(i);
+                 //   System.out.print(rafFile.getFilePointer()+" | ");
+                    rafFile.write(bytes);
+                   // System.out.println(rafFile.getFilePointer()+" | ");
+                    bytes=tmp;
+                }
+                rafFile.write(bytes);
+
+
+                /*for (int i = row * (getNumCols() - 1) + col; i < rafFile.length() - replaceData.size(); i = i + replaceData.size()) {
                     for (int j = 0; j < replaceData.size(); j++) {
                         byte b = rafFile.readByte();
-                        rafFile.seek(rafFile.getFilePointer()-1);
+                        rafFile.seek(rafFile.getFilePointer() - 1);
                         rafFile.write(replaceData.get(j));
                         System.out.println(rafFile.getFilePointer());//разобраться на этом моменте
                         replaceData.set(j, b);
                     }
-                }
+                }*/
             } catch (IOException e) {
                 e.printStackTrace();
             }
